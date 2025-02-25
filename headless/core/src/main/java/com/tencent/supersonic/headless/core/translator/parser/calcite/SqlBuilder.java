@@ -70,13 +70,25 @@ public class SqlBuilder {
             Renderer renderer = it.next();
             if (previous != null) {
                 previous.render(ontologyQuery, dataModels, scope, schema, !isAgg);
+
+
                 renderer.setTable(previous
                         .builderAs(DataModelNode.getNames(dataModels) + "_" + String.valueOf(i)));
+
+
+                parserNode = renderer.builder();
+                System.out.println("~~~~~~~~~~");
+                System.out.println(previous.getClass().getSimpleName());
+                System.out.println(parserNode.toString().toString().replaceAll("SCHEMA_5ea6ffddc1cd4a76941e92b0356a4fdf", "fdf").replaceAll("SCHEMA_ae3aed14bfc04cd2a9c4f4210d8838b5", "8b5").replaceAll("SCHEMA_a88462ebd1444c9fb4141d520e85a853", "853"));
+                optimizeParseNode(schema.getOntology().getDatabaseType());
                 i++;
             }
             previous = renderer;
         }
         builders.getLast().render(ontologyQuery, dataModels, scope, schema, !isAgg);
+        System.out.println("~~~~~~~~~~");
+        System.out.println(builders.getLast().getClass().getSimpleName());
+        System.out.println(builders.getLast().getTableView().getTable().toString().toString().replaceAll("SCHEMA_5ea6ffddc1cd4a76941e92b0356a4fdf", "fdf").replaceAll("SCHEMA_ae3aed14bfc04cd2a9c4f4210d8838b5", "8b5").replaceAll("SCHEMA_a88462ebd1444c9fb4141d520e85a853", "853"));
         parserNode = builders.getLast().builder();
     }
 

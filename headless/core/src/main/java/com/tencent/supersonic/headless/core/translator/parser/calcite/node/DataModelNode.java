@@ -285,102 +285,255 @@ public class DataModelNode extends SemanticNode {
     }
 
     private static List<DataModel> findRelatedModelsByRelation(Ontology ontology,
-            OntologyQuery queryParam, DataModel baseDataModel, Set<String> queryDimensions,
-            Set<String> queryMeasures) {
+                                                               OntologyQuery queryParam, DataModel baseDataModel, Set<String> queryDimensions,
+                                                               Set<String> queryMeasures) {
         Set<String> joinDataModelNames = new HashSet<>();
         List<DataModel> joinDataModels = new ArrayList<>();
+        // 记录已处理的数据模型
         Set<String> before = new HashSet<>();
         before.add(baseDataModel.getName());
 
-        if (!CollectionUtils.isEmpty(ontology.getJoinRelations())) {
-            Set<Long> visitJoinRelations = new HashSet<>();
-            List<JoinRelation> sortedJoinRelation = new ArrayList<>();
-            sortJoinRelation(ontology.getJoinRelations(), baseDataModel.getName(),
-                    visitJoinRelations, sortedJoinRelation);
-            ontology.getJoinRelations().stream()
-                    .filter(j -> !visitJoinRelations.contains(j.getId()))
-                    .forEach(sortedJoinRelation::add);
-            for (JoinRelation joinRelation : sortedJoinRelation) {
-                if (!before.contains(joinRelation.getLeft())
-                        && !before.contains(joinRelation.getRight())) {
-                    continue;
-                }
-                boolean isMatch = false;
-                boolean isRight = before.contains(joinRelation.getLeft());
-                DataModel other = isRight ? ontology.getDataModelMap().get(joinRelation.getRight())
-                        : ontology.getDataModelMap().get(joinRelation.getLeft());
-                String joinDimName = isRight ? joinRelation.getJoinCondition().get(0).getRight()
-                        : joinRelation.getJoinCondition().get(0).getLeft();
-                if (!queryDimensions.isEmpty()) {
-                    Set<String> linkDimension = other.getDimensions().stream()
-                            .map(Dimension::getName).collect(Collectors.toSet());
-                    other.getIdentifiers().forEach(i -> linkDimension.add(i.getName()));
-                    linkDimension.retainAll(queryDimensions);
-                    if (!linkDimension.isEmpty()) {
-                        isMatch = true;
-                        // joinDim should be added to the query dimension
-                        queryParam.getDimensions().add(joinDimName);
-                    }
-                }
-                Set<String> linkMeasure = other.getMeasures().stream().map(Measure::getName)
-                        .collect(Collectors.toSet());
-                linkMeasure.retainAll(queryMeasures);
-                if (!linkMeasure.isEmpty()) {
-                    isMatch = true;
-                }
-                if (!isMatch && ontology.getDimensionMap().containsKey(other.getName())) {
-                    Set<String> linkDimension = ontology.getDimensionMap().get(other.getName())
-                            .stream().map(Dimension::getName).collect(Collectors.toSet());
-                    linkDimension.retainAll(queryDimensions);
-                    if (!linkDimension.isEmpty()) {
-                        isMatch = true;
-                    }
-                }
-                if (isMatch) {
-                    joinDataModelNames.add(other.getName());
-                    before.add(other.getName());
-                }
-            }
-        }
-        if (!CollectionUtils.isEmpty(joinDataModelNames)) {
-            Map<String, Long> orders = new HashMap<>();
-            joinDataModelNames.add(baseDataModel.getName());
-            orders.put(baseDataModel.getName(), 0L);
+        // 存储所有未匹配的度量和维度
+        Set<String> unmatchedMeasures = new HashSet<>(queryMeasures);
+        Set<String> unmatchedDimensions = new HashSet<>(queryDimensions);
 
-            // Adjust the order of tables in the data source to facilitate subsequent joins
-            ArrayList<String> joinTables = new ArrayList<>();
-            for (JoinRelation joinRelation : ontology.getJoinRelations()) {
-                if (joinDataModelNames.contains(joinRelation.getLeft())
-                        && joinDataModelNames.contains(joinRelation.getRight())) {
-                    joinTables.add(joinRelation.getLeft());
-                    joinTables.add(joinRelation.getRight());
+        // 移除基础模型已经匹配的度量和维度
+        removeMatchedItems(baseDataModel, unmatchedMeasures, unmatchedDimensions);
+
+        if (!CollectionUtils.isEmpty(ontology.getJoinRelations())) {
+            // 构建表之间的关联关系图
+            Map<String, Set<String>> joinGraph = buildJoinGraph(ontology.getJoinRelations());
+
+            // 找到所有可能需要的目标表
+            Set<String> targetTables = findTablesWithRequiredData(ontology,
+                    unmatchedMeasures, unmatchedDimensions);
+
+            // 对于每个目标表，找到从baseModel到该表的路径
+            for (String targetTable : targetTables) {
+                List<String> path = findShortestPath(joinGraph,
+                        baseDataModel.getName(), targetTable, new HashSet<>());
+
+                if (path != null && !path.isEmpty()) {
+                    // 添加路径上的所有表
+                    joinDataModelNames.addAll(path);
+                    // 添加必要的join维度
+                    addRequiredJoinDimensions(path, ontology, queryParam);
                 }
             }
-            for (String joinTable : joinTables) {
-                orders.put(joinTable, orders.getOrDefault(joinTable, 0L) + 1L);
-            }
-            orders.entrySet().stream()
-                    .sorted((entry1, entry2) -> entry2.getValue().compareTo(entry1.getValue())) // 倒序排序
-                    .forEach(d -> {
-                        joinDataModels.add(ontology.getDataModelMap().get(d.getKey()));
-                    });
         }
-        return joinDataModels;
+
+        // 构建最终的结果列表
+        if (!CollectionUtils.isEmpty(joinDataModelNames)) {
+            joinDataModelNames.add(baseDataModel.getName());
+            return orderDataModels(joinDataModelNames, ontology);
+        }
+
+        return Lists.newArrayList();
     }
 
-    private static void sortJoinRelation(List<JoinRelation> joinRelations, String next,
-            Set<Long> visited, List<JoinRelation> sortedJoins) {
-        for (JoinRelation link : joinRelations) {
-            if (!visited.contains(link.getId())) {
-                if (link.getLeft().equals(next) || link.getRight().equals(next)) {
-                    visited.add(link.getId());
-                    sortedJoins.add(link);
-                    sortJoinRelation(joinRelations,
-                            link.getLeft().equals(next) ? link.getRight() : link.getLeft(), visited,
-                            sortedJoins);
+    // 构建表之间的关联关系图
+    private static Map<String, Set<String>> buildJoinGraph(List<JoinRelation> relations) {
+        Map<String, Set<String>> graph = new HashMap<>();
+
+        for (JoinRelation relation : relations) {
+            graph.computeIfAbsent(relation.getLeft(), k -> new HashSet<>())
+                    .add(relation.getRight());
+            graph.computeIfAbsent(relation.getRight(), k -> new HashSet<>())
+                    .add(relation.getLeft());
+        }
+
+        return graph;
+    }
+
+    // 找到包含所需数据的表
+    private static Set<String> findTablesWithRequiredData(Ontology ontology,
+                                                          Set<String> measures, Set<String> dimensions) {
+        Set<String> tables = new HashSet<>();
+
+        // 检查每个数据模型
+        for (Map.Entry<String, DataModel> entry : ontology.getDataModelMap().entrySet()) {
+            DataModel model = entry.getValue();
+
+            // 检查度量
+            boolean hasMeasure = model.getMeasures().stream()
+                    .map(Measure::getName)
+                    .anyMatch(measures::contains);
+
+            // 检查维度
+            boolean hasDimension = model.getDimensions().stream()
+                    .map(Dimension::getName)
+                    .anyMatch(dimensions::contains);
+
+            if (hasMeasure || hasDimension) {
+                tables.add(entry.getKey());
+            }
+        }
+
+        return tables;
+    }
+
+    // 使用BFS找到最短路径
+    private static List<String> findShortestPath(Map<String, Set<String>> graph,
+                                                 String start, String end, Set<String> visited) {
+        if (start.equals(end)) {
+            return new ArrayList<>(Collections.singletonList(start));
+        }
+
+        Queue<List<String>> queue = new LinkedList<>();
+        queue.offer(new ArrayList<>(Collections.singletonList(start)));
+        visited.add(start);
+
+        while (!queue.isEmpty()) {
+            List<String> path = queue.poll();
+            String last = path.get(path.size() - 1);
+
+            Set<String> neighbors = graph.getOrDefault(last, Collections.emptySet());
+            for (String next : neighbors) {
+                if (!visited.contains(next)) {
+                    List<String> newPath = new ArrayList<>(path);
+                    newPath.add(next);
+
+                    if (next.equals(end)) {
+                        return newPath;
+                    }
+
+                    visited.add(next);
+                    queue.offer(newPath);
                 }
             }
         }
+
+        return null;
+    }
+
+    // 添加必要的join维度
+    private static void addRequiredJoinDimensions(List<String> path,
+                                                  Ontology ontology, OntologyQuery queryParam) {
+        for (int i = 0; i < path.size() - 1; i++) {
+            String current = path.get(i);
+            String next = path.get(i + 1);
+
+            // 找到这两个表之间的join关系
+            ontology.getJoinRelations().stream()
+                    .filter(relation -> (relation.getLeft().equals(current) &&
+                            relation.getRight().equals(next)) ||
+                            (relation.getLeft().equals(next) &&
+                                    relation.getRight().equals(current)))
+                    .findFirst()
+                    .ifPresent(relation -> {
+                        // 添加join条件中的维度
+                        relation.getJoinCondition().forEach(condition -> {
+                            queryParam.getDimensions().add(condition.getLeft());
+                            queryParam.getDimensions().add(condition.getRight());
+                        });
+                    });
+        }
+    }
+
+    private static void removeMatchedItems(DataModel baseModel,
+                                           Set<String> unmatchedMeasures, Set<String> unmatchedDimensions) {
+        // 移除基础模型中已匹配的度量
+        Set<String> baseMeasures = baseModel.getMeasures().stream()
+                .map(Measure::getName)
+                .collect(Collectors.toSet());
+        unmatchedMeasures.removeAll(baseMeasures);
+
+        // 检查维度中是否包含了一些度量
+        Set<String> baseDimensions = baseModel.getDimensions().stream()
+                .map(Dimension::getName)
+                .collect(Collectors.toSet());
+        // 添加标识符作为维度
+        baseModel.getIdentifiers().forEach(i -> baseDimensions.add(i.getName()));
+
+        // 如果有些度量实际上在维度中能找到，也需要移除
+        Set<String> measuresInDimensions = new HashSet<>(baseDimensions);
+        measuresInDimensions.retainAll(unmatchedMeasures);
+        unmatchedMeasures.removeAll(measuresInDimensions);
+
+        // 移除基础模型中已匹配的维度
+        unmatchedDimensions.removeAll(baseDimensions);
+    }
+
+    private static List<DataModel> orderDataModels(Set<String> joinDataModelNames, Ontology ontology) {
+        List<DataModel> orderedModels = new ArrayList<>();
+
+        // 如果只有一个模型，直接返回
+        if (joinDataModelNames.size() <= 1) {
+            joinDataModelNames.forEach(name ->
+                    orderedModels.add(ontology.getDataModelMap().get(name)));
+            return orderedModels;
+        }
+
+        // 构建表之间的关联关系图
+        Map<String, Set<JoinRelation>> joinGraph = new HashMap<>();
+        for (JoinRelation relation : ontology.getJoinRelations()) {
+            if (joinDataModelNames.contains(relation.getLeft()) &&
+                    joinDataModelNames.contains(relation.getRight())) {
+                joinGraph.computeIfAbsent(relation.getLeft(), k -> new HashSet<>()).add(relation);
+                joinGraph.computeIfAbsent(relation.getRight(), k -> new HashSet<>()).add(relation);
+            }
+        }
+
+        // 使用拓扑排序确定表的顺序
+        Set<String> visited = new HashSet<>();
+        Set<String> visiting = new HashSet<>();
+        Stack<String> orderStack = new Stack<>();
+
+        // 对每个未访问的表进行深度优先搜索
+        for (String modelName : joinDataModelNames) {
+            if (!visited.contains(modelName)) {
+                if (!topologicalSort(modelName, joinGraph, visited, visiting, orderStack)) {
+                    // 如果检测到循环依赖，使用默认顺序
+                    return new ArrayList<>(joinDataModelNames.stream()
+                            .map(name -> ontology.getDataModelMap().get(name))
+                            .collect(Collectors.toList()));
+                }
+            }
+        }
+
+        // 从栈中取出排序后的表名并构建结果
+        while (!orderStack.isEmpty()) {
+            String modelName = orderStack.pop();
+            orderedModels.add(ontology.getDataModelMap().get(modelName));
+        }
+
+        return orderedModels;
+    }
+
+    private static boolean topologicalSort(String current,
+                                           Map<String, Set<JoinRelation>> joinGraph,
+                                           Set<String> visited,
+                                           Set<String> visiting,
+                                           Stack<String> orderStack) {
+
+        // 检测循环依赖
+        if (visiting.contains(current)) {
+            return false;
+        }
+
+        // 如果已经访问过，直接返回
+        if (visited.contains(current)) {
+            return true;
+        }
+
+        visiting.add(current);
+
+        // 访问所有相邻的表
+        Set<JoinRelation> relations = joinGraph.getOrDefault(current, new HashSet<>());
+        for (JoinRelation relation : relations) {
+            String next = relation.getLeft().equals(current) ?
+                    relation.getRight() : relation.getLeft();
+
+            if (!topologicalSort(next, joinGraph, visited, visiting, orderStack)) {
+                return false;
+            }
+        }
+
+        visiting.remove(current);
+        visited.add(current);
+        orderStack.push(current);
+
+        return true;
     }
 
     private static List<DataModel> findRelatedModelsByIdentifier(Ontology ontology,

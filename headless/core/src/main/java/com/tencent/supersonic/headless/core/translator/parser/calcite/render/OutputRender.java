@@ -26,29 +26,20 @@ public class OutputRender extends Renderer {
             SqlValidatorScope scope, S2CalciteSchema schema, boolean nonAgg) throws Exception {
         TableView selectDataSet = super.tableView;
         EngineType engineType = schema.getOntology().getDatabaseType();
-        for (String dimension : metricCommand.getDimensions()) {
-            selectDataSet.getMeasure().add(SemanticNode.parse(dimension, scope, engineType));
-        }
-        for (String metric : metricCommand.getMetrics()) {
-            if (MetricNode.isMetricField(metric, schema)) {
-                // metric from field ignore
-                continue;
-            }
-            selectDataSet.getMeasure().add(SemanticNode.parse(metric, scope, engineType));
-        }
 
+        // 处理limit
         if (metricCommand.getLimit() > 0) {
-            SqlNode offset =
-                    SemanticNode.parse(metricCommand.getLimit().toString(), scope, engineType);
+            SqlNode offset = SemanticNode.parse(metricCommand.getLimit().toString(), scope, engineType);
             selectDataSet.setOffset(offset);
         }
+
+        // 处理order by
         if (!CollectionUtils.isEmpty(metricCommand.getOrder())) {
             List<SqlNode> orderList = new ArrayList<>();
             for (ColumnOrder columnOrder : metricCommand.getOrder()) {
                 if (SqlStdOperatorTable.DESC.getName().equalsIgnoreCase(columnOrder.getOrder())) {
                     orderList.add(SqlStdOperatorTable.DESC.createCall(SqlParserPos.ZERO,
-                            new SqlNode[] {SemanticNode.parse(columnOrder.getCol(), scope,
-                                    engineType)}));
+                            new SqlNode[] {SemanticNode.parse(columnOrder.getCol(), scope, engineType)}));
                 } else {
                     orderList.add(SemanticNode.parse(columnOrder.getCol(), scope, engineType));
                 }
