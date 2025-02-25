@@ -2,11 +2,7 @@ package com.tencent.supersonic.headless.core.translator.parser.calcite;
 
 import com.tencent.supersonic.headless.core.translator.parser.s2sql.DataModel;
 import lombok.Data;
-import org.apache.calcite.sql.SqlBasicCall;
-import org.apache.calcite.sql.SqlKind;
-import org.apache.calcite.sql.SqlNode;
-import org.apache.calcite.sql.SqlNodeList;
-import org.apache.calcite.sql.SqlSelect;
+import org.apache.calcite.sql.*;
 import org.apache.calcite.sql.parser.SqlParserPos;
 
 import java.util.ArrayList;
@@ -38,6 +34,15 @@ public class TableView {
         SqlNodeList filterNodeList = null;
         if (filter.size() > 0) {
             filterNodeList = new SqlNodeList(filter, SqlParserPos.ZERO);
+        }
+
+        if (measure.isEmpty()) {
+            // 添加 SELECT *
+            SqlIdentifier star = new SqlIdentifier(
+                    List.of("*"),  // 使用 * 作为标识符
+                    SqlParserPos.ZERO
+            );
+            measure.add(star);
         }
         return new SqlSelect(SqlParserPos.ZERO, null, new SqlNodeList(measure, SqlParserPos.ZERO),
                 table, filterNodeList, dimensionNodeList, null, null, null, order, offset, fetch,

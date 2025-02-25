@@ -30,48 +30,21 @@ public class FilterRender extends Renderer {
             SqlValidatorScope scope, S2CalciteSchema schema, boolean nonAgg) throws Exception {
         TableView tableView = super.tableView;
         SqlNode filterNode = null;
-        List<String> queryMetrics = new ArrayList<>(metricCommand.getMetrics());
-        List<String> queryDimensions = new ArrayList<>(metricCommand.getDimensions());
         EngineType engineType = schema.getOntology().getDatabaseType();
 
+        // 只处理where条件
         if (metricCommand.getWhere() != null && !metricCommand.getWhere().isEmpty()) {
             filterNode = SemanticNode.parse(metricCommand.getWhere(), scope, engineType);
-            Set<String> whereFields = new HashSet<>();
-            FilterNode.getFilterField(filterNode, whereFields);
-            List<String> fieldWhere = whereFields.stream().collect(Collectors.toList());
-            Set<String> dimensions = new HashSet<>();
-            Set<String> metrics = new HashSet<>();
-            for (DataModel dataModel : dataModels) {
-                SourceRender.whereDimMetric(fieldWhere, metricCommand.getMetrics(),
-                        metricCommand.getDimensions(), dataModel, schema, dimensions, metrics);
-            }
-            queryMetrics.addAll(metrics);
-            queryDimensions.addAll(dimensions);
         }
-        for (String dimension : queryDimensions) {
-            tableView.getMeasure().add(SemanticNode.parse(dimension, scope, engineType));
-        }
-        for (String metric : queryMetrics) {
-            Optional<Metric> optionalMetric = Renderer.getMetricByName(metric, schema);
-            if (optionalMetric.isPresent() && MetricNode.isMetricField(optionalMetric.get())) {
-                // metric from field ignore
-                continue;
-            }
-            if (optionalMetric.isPresent()) {
-                tableView.getMeasure()
-                        .add(MetricNode.build(optionalMetric.get(), scope, engineType));
-            } else {
-                tableView.getMeasure().add(SemanticNode.parse(metric, scope, engineType));
-            }
-        }
-        tableView.setMeasure(SemanticNode.deduplicateNode(tableView.getMeasure()));
-        tableView.setDimension(SemanticNode.deduplicateNode(tableView.getDimension()));
+
+        // 如果有where条件，创建过滤视图
         if (filterNode != null) {
             TableView filterView = new TableView();
             filterView.setTable(SemanticNode.buildAs(Constants.DATASOURCE_TABLE_FILTER_PREFIX,
                     tableView.build()));
             filterView.getFilter().add(filterNode);
-            filterView.getMeasure().add(SqlIdentifier.star(SqlParserPos.ZERO));
+            // 直接使用原表的字段，因为join已经处理好了字段重复的问题
+            filterView.getMeasure().addAll(tableView.getMeasure());
             super.tableView = filterView;
         }
     }

@@ -1,15 +1,11 @@
 package com.tencent.supersonic.headless.core.translator.parser.calcite.render;
 
 import com.tencent.supersonic.common.pojo.enums.EngineType;
+import com.tencent.supersonic.headless.core.pojo.JoinRelation;
 import com.tencent.supersonic.headless.core.pojo.OntologyQuery;
 import com.tencent.supersonic.headless.core.translator.parser.calcite.S2CalciteSchema;
 import com.tencent.supersonic.headless.core.translator.parser.calcite.TableView;
-import com.tencent.supersonic.headless.core.translator.parser.calcite.node.DataModelNode;
-import com.tencent.supersonic.headless.core.translator.parser.calcite.node.DimensionNode;
-import com.tencent.supersonic.headless.core.translator.parser.calcite.node.FilterNode;
-import com.tencent.supersonic.headless.core.translator.parser.calcite.node.IdentifyNode;
-import com.tencent.supersonic.headless.core.translator.parser.calcite.node.MetricNode;
-import com.tencent.supersonic.headless.core.translator.parser.calcite.node.SemanticNode;
+import com.tencent.supersonic.headless.core.translator.parser.calcite.node.*;
 import com.tencent.supersonic.headless.core.translator.parser.s2sql.Constants;
 import com.tencent.supersonic.headless.core.translator.parser.s2sql.DataModel;
 import com.tencent.supersonic.headless.core.translator.parser.s2sql.Dimension;
@@ -20,6 +16,7 @@ import com.tencent.supersonic.headless.core.translator.parser.s2sql.Metric;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.calcite.sql.SqlNode;
 import org.apache.calcite.sql.validate.SqlValidatorScope;
+import org.apache.commons.lang3.tuple.Triple;
 import org.springframework.util.CollectionUtils;
 
 import java.util.ArrayList;
@@ -90,6 +87,35 @@ public class SourceRender extends Renderer {
                     datasource, schema, nonAgg, extendFields, dataSet, output, scope);
         }
 
+        // 获取需要用于join的列
+        if (!CollectionUtils.isEmpty(schema.getJoinRelations())) {
+            for (JoinRelation relation : schema.getJoinRelations()) {
+                boolean isLeft = relation.getLeft().equals(datasource.getName());
+                boolean isRight = relation.getRight().equals(datasource.getName());
+                if (isLeft || isRight) {
+                    for(Triple<String, String, String> triple : relation.getJoinCondition()) {
+                        String field = isLeft ? triple.getLeft() : triple.getRight();
+                        Optional<Measure> optionalMeasure = Renderer.getMeasureByName(field, datasource);
+
+
+                        if(optionalMeasure.isPresent()) {
+                            Measure measure = optionalMeasure.get();
+                            SqlNode joinNode = MeasureNode.buildNonAgg("", measure, scope, schema.getOntology().getDatabaseType());
+                            dataSet.getMeasure().add(joinNode);
+                        }
+                        else {
+                            Optional<Identify> optionalIdentify = Renderer.getIdentifyByName(field, datasource);
+                            Identify identify = optionalIdentify.get();
+                            SqlNode joinNode = IdentifyNode.build(identify, scope, schema.getOntology().getDatabaseType());
+                            dataSet.getMeasure().add(joinNode);
+                        }
+
+
+                    }
+                }
+            }
+        }
+
         output.setMeasure(SemanticNode.deduplicateNode(output.getMeasure()));
         dataSet.setMeasure(SemanticNode.deduplicateNode(dataSet.getMeasure()));
 
@@ -100,8 +126,6 @@ public class SourceRender extends Renderer {
                         + "_" + UUID.randomUUID().toString().substring(32), dataSet.build()));
         return output;
     }
-
-
 
     private static void buildDimension(String alias, String dimension, DataModel datasource,
             S2CalciteSchema schema, boolean nonAgg, Map<String, String> extendFields,
@@ -122,7 +146,7 @@ public class SourceRender extends Renderer {
                     continue;
                 }
 
-                if ("".equals(alias)) {
+                if ("".equals(alias)/*|| (alias != null && alias.equals(dim.getName()))*/) {
                     output.getDimension().add(DimensionNode.buildName(dim, scope, engineType));
                 } else {
                     output.getDimension()
