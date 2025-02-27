@@ -15,11 +15,11 @@ import com.tencent.supersonic.headless.core.translator.parser.s2sql.Metric;
 import lombok.Data;
 import org.apache.calcite.sql.SqlNode;
 import org.apache.calcite.sql.validate.SqlValidatorScope;
+import org.springframework.util.CollectionUtils;
 
-import java.util.HashSet;
-import java.util.List;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 /** process TableView */
@@ -114,6 +114,118 @@ public abstract class Renderer {
         return SemanticNode.buildAs(alias, tableView.build());
     }
 
+    // 检查度量是否属于指定的数据模型
+    protected static boolean isMetricBelongToModel(String metric, DataModel model) {
+        if (model == null || CollectionUtils.isEmpty(model.getMeasures())) {
+            return false;
+        }
+        return model.getMeasures().stream()
+                .anyMatch(m -> m.getName().equals(metric));
+    }
+
+    // 检查维度是否属于指定的数据模型
+    protected static boolean isDimensionBelongToModel(String dimension, DataModel model) {
+        if (model == null || CollectionUtils.isEmpty(model.getDimensions())) {
+            return false;
+        }
+        return model.getDimensions().stream()
+                .anyMatch(d -> d.getName().equals(dimension));
+    }
+
+    // 检查字段是否属于指定的数据模型（可以是度量、维度或标识符）
+    protected static boolean isFieldBelongToModel(String field, DataModel model) {
+        // 检查是否是度量
+        if (isMetricBelongToModel(field, model)) {
+            return true;
+        }
+
+        // 检查是否是维度
+        if (isDimensionBelongToModel(field, model)) {
+            return true;
+        }
+
+        // 检查是否是标识符
+        if (model != null && !CollectionUtils.isEmpty(model.getIdentifiers())) {
+            return model.getIdentifiers().stream()
+                    .anyMatch(i -> i.getName().equals(field));
+        }
+
+        return false;
+    }
+
+    public TableView getTableView() {
+        return tableView;
+    }
+
     public abstract void render(OntologyQuery metricCommand, List<DataModel> dataModels,
             SqlValidatorScope scope, S2CalciteSchema schema, boolean nonAgg) throws Exception;
+
+
+    private static final Pattern SCHEMA_PATTERN = Pattern.compile("SCHEMA_[a-f0-9]{32}");
+    private static final Pattern TABLE_ALIAS_PATTERN = Pattern.compile("(src\\d+_SCHEMA_[a-f0-9]{32})");
+    private static final Pattern RESULT_ALIAS_PATTERN = Pattern.compile("(SCHEMA_[a-f0-9]{32}_SCHEMA_[a-f0-9]{32}.*?_\\d+)");
+    private static final Pattern MDV_TABLE_PATTERN = Pattern.compile("__mdv_table_SCHEMA_[a-f0-9]{32}__");
+
+    public static String simplifySQL(String sql) {
+        if (sql == null || sql.isEmpty()) {
+            return sql;
+        }
+
+        String result = sql;
+
+        // 1. 收集所有模式ID并简化
+        Map<String, String> schemaMap = new HashMap<>();
+        Matcher schemaMatcher = SCHEMA_PATTERN.matcher(sql);
+        int schemaCount = 1;
+        while (schemaMatcher.find()) {
+            String schema = schemaMatcher.group();
+            if (!schemaMap.containsKey(schema)) {
+                schemaMap.put(schema, "S" + schemaCount++);
+            }
+        }
+
+        // 如果找到了模式ID，进行替换
+        if (!schemaMap.isEmpty()) {
+            // 2. 替换所有模式ID
+            for (Map.Entry<String, String> entry : schemaMap.entrySet()) {
+                result = result.replace(entry.getKey(), entry.getValue());
+            }
+
+            // 3. 简化表别名 (src1_SCHEMA_xxx -> src1_S1)
+            Matcher aliasMatcher = TABLE_ALIAS_PATTERN.matcher(result);
+            while (aliasMatcher.find()) {
+                String alias = aliasMatcher.group();
+                String simplified = alias;
+                for (Map.Entry<String, String> entry : schemaMap.entrySet()) {
+                    simplified = simplified.replace(entry.getKey(), entry.getValue());
+                }
+                result = result.replace(alias, simplified);
+            }
+
+            // 4. 简化结果集别名 (SCHEMA_xxx_SCHEMA_yyy_n -> S1_S2_n)
+            Matcher resultMatcher = RESULT_ALIAS_PATTERN.matcher(result);
+            while (resultMatcher.find()) {
+                String alias = resultMatcher.group();
+                String simplified = alias;
+                for (Map.Entry<String, String> entry : schemaMap.entrySet()) {
+                    simplified = simplified.replace(entry.getKey(), entry.getValue());
+                }
+                result = result.replace(alias, simplified);
+            }
+
+            // 5. 简化MDV表名
+            Matcher mdvMatcher = MDV_TABLE_PATTERN.matcher(result);
+            while (mdvMatcher.find()) {
+                String tableName = mdvMatcher.group();
+                String simplified = tableName;
+                for (Map.Entry<String, String> entry : schemaMap.entrySet()) {
+                    simplified = simplified.replace(entry.getKey(), entry.getValue());
+                }
+                result = result.replace(tableName, simplified);
+            }
+        }
+
+        System.out.println(result);
+        return result;
+    }
 }

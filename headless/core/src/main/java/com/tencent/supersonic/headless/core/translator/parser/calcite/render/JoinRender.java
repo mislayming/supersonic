@@ -27,19 +27,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Triple;
 import org.springframework.util.CollectionUtils;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.Queue;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
@@ -79,6 +67,9 @@ public class JoinRender extends Renderer {
 
 		// 4. 构建join关系图
 		JoinGraph joinGraph = buildJoinGraph(dataModels, schema);
+		System.out.println("------ relation");
+		System.out.println(joinGraph.toString());
+
 
 		// 5. 构建join树
 		SqlNode joinTree = buildJoinTree(
@@ -142,7 +133,7 @@ public class JoinRender extends Renderer {
 				for (Triple<String, String, String> triple : joinRelation.getJoinCondition()) {
 					String leftTable = joinRelation.getLeft();
 					String rightTable = joinRelation.getRight();
-					
+
 					// 添加左表字段
 					for (DataModel model : dataModels) {
 						if (model.getName().equals(leftTable) && isFieldBelongToModel(triple.getLeft(), model)) {
@@ -152,7 +143,7 @@ public class JoinRender extends Renderer {
 							break;
 						}
 					}
-					
+
 					// 添加右表字段
 					for (DataModel model : dataModels) {
 						if (model.getName().equals(rightTable) && isFieldBelongToModel(triple.getRight(), model)) {
@@ -196,15 +187,15 @@ public class JoinRender extends Renderer {
 
 		// 7. 构建最终的查询视图
 		// 7.1 构建内部视图 - 只选择需要的字段，并正确处理别名
-		Set<String> selectFields = new HashSet<>(finalFields);  // 复制finalFields
+		Set<String> selectFields = new LinkedHashSet<>(finalFields);  // 使用LinkedHashSet保持顺序
 
 		// 确保join条件中使用的字段被包含在查询中
 		for (DataModel model : dataModels) {
 			for (Identify identify : model.getIdentifiers()) {
 				String field = identify.getName();
 				String tableAlias = Constants.JOIN_TABLE_PREFIX + model.getName();
-				// 如果这个字段被用作join条件，确保它被包含在查询中
-				if (isFieldBelongToModel(field, model)) {
+				// 如果这个字段被用作join条件，确保它被包含在查询中，但不重复添加
+				if (isFieldBelongToModel(field, model) && !selectFields.contains(field)) {
 					selectFields.add(field);
 					if (!fieldToSourceMap.containsKey(field)) {
 						fieldToSourceMap.put(field, tableAlias);
@@ -213,13 +204,15 @@ public class JoinRender extends Renderer {
 			}
 		}
 
-		// 构建查询字段
-		for (String field : selectFields) {  // 使用包含join字段的selectFields
+		// 构建查询字段，使用Set避免重复
+		Set<String> addedFields = new HashSet<>();
+		for (String field : selectFields) {
 			String sourceTable = fieldToSourceMap.get(field);
-			if (sourceTable != null) {
+			if (sourceTable != null && !addedFields.contains(field)) {
 				String qualifiedField = sourceTable + "." + field;
 				SqlNode fieldNode = SemanticNode.parse(qualifiedField, scope, engineType);
 				innerView.getMeasure().add(SemanticNode.buildAs(field, fieldNode));
+				addedFields.add(field);
 			}
 		}
 		innerView.setTable(joinTree);
@@ -228,16 +221,20 @@ public class JoinRender extends Renderer {
 		filterView.setTable(SemanticNode.buildAs(Constants.JOIN_TABLE_OUT_PREFIX, innerView.build()));
 
 		// 7.3 根据查询类型（聚合/非聚合）添加字段
-		for (String field : finalFields) {  // 使用已经去重的字段集合
-			SqlNode fieldNode = SemanticNode.parse(field, scope, engineType);
-			if (nonAgg) {
-				filterView.getMeasure().add(fieldNode);
-			} else {
-				if (metricCommand.getDimensions().contains(field)) {
-					filterView.getDimension().add(fieldNode);
-				} else if (metricCommand.getMetrics().contains(field)) {
+		addedFields.clear();  // 重置已添加字段集合
+		for (String field : finalFields) {
+			if (!addedFields.contains(field)) {
+				SqlNode fieldNode = SemanticNode.parse(field, scope, engineType);
+				if (nonAgg) {
 					filterView.getMeasure().add(fieldNode);
+				} else {
+					if (metricCommand.getDimensions().contains(field)) {
+						filterView.getDimension().add(fieldNode);
+					} else if (metricCommand.getMetrics().contains(field)) {
+						filterView.getMeasure().add(fieldNode);
+					}
 				}
+				addedFields.add(field);
 			}
 		}
 
@@ -733,17 +730,34 @@ public class JoinRender extends Renderer {
 	                          List<String> whereFields, Set<String> queryMetrics, Set<String> queryDimension,
 	                          String whereCondition, SqlValidatorScope scope, S2CalciteSchema schema) throws Exception {
 
-		// 收集所有join相关的字段
-		Set<String> joinFields = new HashSet<>();
-		for (DataModel model : dataModels) {
-			for (Identify identify : model.getIdentifiers()) {
-				joinFields.add(identify.getName());
-			}
-		}
-
-		// 1. 首先构建所有需要的TableView
+		// 在构建每个表的TableView时，需要确保包含所有需要的字段
 		Map<String, TableView> tableViews = new HashMap<>();
 		for (DataModel model : dataModels) {
+			// 收集这个表需要的所有字段
+			Set<String> neededFields = new HashSet<>();
+
+			// 1. 添加JOIN条件中用到的字段
+			for (JoinRelation relation : graph.getJoinConditions().values()) {
+				if (relation.getLeft().equals(model.getName())) {
+					neededFields.addAll(relation.getJoinCondition().stream()
+						.map(Triple::getLeft)
+						.collect(Collectors.toSet()));
+				}
+				if (relation.getRight().equals(model.getName())) {
+					neededFields.addAll(relation.getJoinCondition().stream()
+						.map(Triple::getRight)
+						.collect(Collectors.toSet()));
+				}
+			}
+
+			// 2. 添加查询结果中需要的字段
+			neededFields.addAll(queryMetrics);
+			neededFields.addAll(queryDimension);
+
+			// 3. 添加where条件中用到的字段
+			neededFields.addAll(whereFields);
+
+			// 构建TableView时传入所有需要的字段
 			TableView tableView = buildTableView(
 					model,
 					whereFields,
@@ -752,8 +766,9 @@ public class JoinRender extends Renderer {
 					whereCondition,
 					scope,
 					schema,
-					joinFields
+					neededFields  // 传入所有需要的字段
 			);
+
 			tableViews.put(model.getName(), tableView);
 		}
 
@@ -944,43 +959,6 @@ public class JoinRender extends Renderer {
 
 		return tableView;
 	}
-
-	/**
-	 * 检查字段是否属于指定的数据模型
-	 */
-	private boolean isFieldBelongToModel(String field, DataModel model) {
-		// 移除可能的表前缀
-		String cleanField = field.contains(".") ?
-				field.substring(field.lastIndexOf(".") + 1) : field;
-
-		// 检查是否是该模型的维度
-		boolean isDimension = model.getDimensions().stream()
-				.anyMatch(dim -> dim.getName().equals(cleanField));
-
-		// 检查是否是该模型的度量
-		boolean isMeasure = model.getMeasures().stream()
-				.anyMatch(measure -> measure.getName().equals(cleanField));
-
-		return isDimension || isMeasure;
-	}
-
-	/**
-	 * 检查度量是否属于指定的数据模型
-	 */
-	private boolean isMetricBelongToModel(String metric, DataModel model) {
-		return model.getMeasures().stream()
-				.anyMatch(measure -> measure.getName().equals(metric));
-	}
-
-	/**
-	 * 检查维度是否属于指定的数据模型
-	 */
-	private boolean isDimensionBelongToModel(String dimension, DataModel model) {
-		return model.getDimensions().stream()
-				.anyMatch(dim -> dim.getName().equals(dimension));
-	}
-
-
 	/**
 	 * Join关系图
 	 */
@@ -1020,6 +998,36 @@ public class JoinRender extends Renderer {
 
 		public Set<String> getNeighbors(String table) {
 			return adjacencyList.getOrDefault(table, Collections.emptySet());
+		}
+
+		@Override
+		public String toString() {
+			StringBuilder sb = new StringBuilder("Join Relations:\n");
+			Set<String> printedPairs = new HashSet<>();
+
+			for (Map.Entry<String, Set<String>> entry : adjacencyList.entrySet()) {
+				String table1 = entry.getKey();
+				for (String table2 : entry.getValue()) {
+					// 确保每对表只打印一次
+					String pairKey = table1.compareTo(table2) < 0
+						? table1 + "_" + table2
+						: table2 + "_" + table1;
+
+					if (!printedPairs.contains(pairKey)) {
+						JoinRelation relation = joinConditions.get(table1 + "_" + table2);
+						if (relation != null && !CollectionUtils.isEmpty(relation.getJoinCondition())) {
+							for (Triple<String, String, String> condition : relation.getJoinCondition()) {
+								sb.append(String.format("%s.%s %s %s.%s\n",
+									table1, condition.getLeft(),
+									condition.getMiddle(),
+									table2, condition.getRight()));
+							}
+						}
+						printedPairs.add(pairKey);
+					}
+				}
+			}
+			return sb.toString();
 		}
 	}
 

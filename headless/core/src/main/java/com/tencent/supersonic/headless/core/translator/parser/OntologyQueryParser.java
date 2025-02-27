@@ -7,8 +7,10 @@ import com.tencent.supersonic.headless.core.translator.parser.calcite.RuntimeOpt
 import com.tencent.supersonic.headless.core.translator.parser.calcite.S2CalciteSchema;
 import com.tencent.supersonic.headless.core.translator.parser.calcite.SqlBuilder;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.io.FileUtils;
 import org.springframework.stereotype.Component;
 
+import java.io.File;
 import java.util.Objects;
 
 /** the calcite parse implements */
@@ -44,6 +46,9 @@ public class OntologyQueryParser implements QueryParser {
 
         QueryStatement statement = JSONObject.parseObject(JSON3, QueryStatement.class);
         new OntologyQueryParser().parse(statement);
+
+//        QueryStatement statement = JSONObject.parseObject(FileUtils.readFileToString(new File("/Users/lang.ming/Downloads/1.json"),"UTF-8"), QueryStatement.class);
+//        new OntologyQueryParser().parse(statement);
     }
 
     private static final String JSON = """

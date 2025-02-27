@@ -79,7 +79,10 @@ public class SqlBuilder {
                 parserNode = renderer.builder();
                 System.out.println("~~~~~~~~~~");
                 System.out.println(previous.getClass().getSimpleName());
-                System.out.println(parserNode.toString().toString().replaceAll("SCHEMA_5ea6ffddc1cd4a76941e92b0356a4fdf", "fdf").replaceAll("SCHEMA_ae3aed14bfc04cd2a9c4f4210d8838b5", "8b5").replaceAll("SCHEMA_a88462ebd1444c9fb4141d520e85a853", "853"));
+                //System.out.println(parserNode.toString().toString().replaceAll("SCHEMA_5ea6ffddc1cd4a76941e92b0356a4fdf", "fdf").replaceAll("SCHEMA_ae3aed14bfc04cd2a9c4f4210d8838b5", "8b5").replaceAll("SCHEMA_a88462ebd1444c9fb4141d520e85a853", "853"));
+
+                Renderer.simplifySQL(parserNode.toString().toString());
+
                 optimizeParseNode(schema.getOntology().getDatabaseType());
                 i++;
             }
@@ -88,7 +91,7 @@ public class SqlBuilder {
         builders.getLast().render(ontologyQuery, dataModels, scope, schema, !isAgg);
         System.out.println("~~~~~~~~~~");
         System.out.println(builders.getLast().getClass().getSimpleName());
-        System.out.println(builders.getLast().getTableView().getTable().toString().toString().replaceAll("SCHEMA_5ea6ffddc1cd4a76941e92b0356a4fdf", "fdf").replaceAll("SCHEMA_ae3aed14bfc04cd2a9c4f4210d8838b5", "8b5").replaceAll("SCHEMA_a88462ebd1444c9fb4141d520e85a853", "853"));
+        Renderer.simplifySQL(builders.getLast().getTableView().getTable().toString());
         parserNode = builders.getLast().builder();
     }
 
