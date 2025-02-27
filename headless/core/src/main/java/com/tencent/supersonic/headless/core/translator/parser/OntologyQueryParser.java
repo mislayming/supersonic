@@ -11,6 +11,8 @@ import org.apache.commons.io.FileUtils;
 import org.springframework.stereotype.Component;
 
 import java.io.File;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 
 /** the calcite parse implements */
@@ -39,16 +41,41 @@ public class OntologyQueryParser implements QueryParser {
     }
 
     public static void main(String[] args) throws Exception {
+        // 指定要遍历的文件夹路径
+        String folderPath = "/Users/lang.ming/Downloads/error-log";
+        File folder = new File(folderPath);
 
-        JSONObject obj1 = JSONObject.parseObject(JSON);
-        JSONObject obj2 = JSONObject.parseObject(JSON2);
-        System.out.println(obj2.equals(obj1));
+        if (!folder.exists() || !folder.isDirectory()) {
+            System.out.println("Folder does not exist or is not a directory: " + folderPath);
+            return;
+        }
 
-        QueryStatement statement = JSONObject.parseObject(JSON3, QueryStatement.class);
-        new OntologyQueryParser().parse(statement);
+        // 遍历文件夹下的所有json文件
+        File[] files = folder.listFiles((dir, name) -> name.toLowerCase().endsWith(".json"));
+        if (files == null || files.length == 0) {
+            System.out.println("No JSON files found in: " + folderPath);
+            return;
+        }
 
-//        QueryStatement statement = JSONObject.parseObject(FileUtils.readFileToString(new File("/Users/lang.ming/Downloads/1.json"),"UTF-8"), QueryStatement.class);
-//        new OntologyQueryParser().parse(statement);
+        List<String> errList = new ArrayList<>();
+        // 处理每个文件
+        for (File file : files) {
+
+            //if(!file.getName().equals("9e4f916e-8c2e-4ea8-9846-e1b403e4221b.json")) continue;
+
+            System.out.println("\n========== Processing: " + file.getName() + " ==========");
+            try {
+                String jsonContent = FileUtils.readFileToString(file, "UTF-8");
+                QueryStatement statement = JSONObject.parseObject(jsonContent, QueryStatement.class);
+                new OntologyQueryParser().parse(statement);
+            } catch (Exception e) {
+                System.err.println("Error processing file: " + file.getName());
+                errList.add("Error processing file: " + file.getName());
+                e.printStackTrace();
+            }
+        }
+
+        errList.forEach(System.out::println);
     }
 
     private static final String JSON = """

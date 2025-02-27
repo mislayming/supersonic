@@ -717,7 +717,44 @@ public class JoinRender extends Renderer {
 
 		// 从schema中的joinRelations构建图
 		for (JoinRelation relation : schema.getOntology().getJoinRelations()) {
+			// 验证join关系的有效性
+			if (relation.getLeft() == null || relation.getRight() == null) {
+				log.warn("Invalid join relation: left or right table is null");
+				continue;
+			}
+			
+			// 验证两个表是否都存在于dataModels中
+			boolean leftExists = dataModels.stream()
+				.anyMatch(m -> m.getName().equals(relation.getLeft()));
+			boolean rightExists = dataModels.stream()
+				.anyMatch(m -> m.getName().equals(relation.getRight()));
+				
+			if (!leftExists || !rightExists) {
+				log.warn("Join relation references non-existent table: {} -> {}", 
+					relation.getLeft(), relation.getRight());
+				continue;
+			}
+
+			// 添加边
 			graph.addEdge(relation.getLeft(), relation.getRight(), relation);
+		}
+
+		// 打印完整的图结构
+		log.info("Built join graph:\n{}", graph);
+
+		// 验证图的连通性
+		Set<String> allTables = new HashSet<>();
+		for (DataModel model : dataModels) {
+			allTables.add(model.getName());
+		}
+		
+		// 验证所有表都在图中
+		for (String table : allTables) {
+			if (!graph.getNeighbors(table).isEmpty()) {
+				log.info("Table {} has {} neighbors", table, graph.getNeighbors(table).size());
+			} else {
+				log.warn("Table {} has no connections in the join graph", table);
+			}
 		}
 
 		return graph;
@@ -729,14 +766,14 @@ public class JoinRender extends Renderer {
 	private SqlNode buildJoinTree(JoinGraph graph, List<DataModel> dataModels,
 	                          List<String> whereFields, Set<String> queryMetrics, Set<String> queryDimension,
 	                          String whereCondition, SqlValidatorScope scope, S2CalciteSchema schema) throws Exception {
-
-		// 在构建每个表的TableView时，需要确保包含所有需要的字段
+		
+		// 1. 构建每个表的TableView
 		Map<String, TableView> tableViews = new HashMap<>();
 		for (DataModel model : dataModels) {
 			// 收集这个表需要的所有字段
 			Set<String> neededFields = new HashSet<>();
 
-			// 1. 添加JOIN条件中用到的字段
+			// 1.1 添加JOIN条件中用到的字段
 			for (JoinRelation relation : graph.getJoinConditions().values()) {
 				if (relation.getLeft().equals(model.getName())) {
 					neededFields.addAll(relation.getJoinCondition().stream()
@@ -772,28 +809,31 @@ public class JoinRender extends Renderer {
 			tableViews.put(model.getName(), tableView);
 		}
 
-		// 2. 找到最优的join顺序
-		List<String> joinOrder = findOptimalJoinOrder(dataModels, graph, queryMetrics, queryDimension);
-
+		// 2. 找到最优的join顺序 - 不再要求相邻表直接连接
+		List<String> joinOrder = findOptimalJoinOrderRelaxed(dataModels, graph, queryMetrics, queryDimension);
+		
 		// 3. 按照优化后的顺序构建join树
 		String firstTable = joinOrder.get(0);
 		SqlNode currentNode = SemanticNode.buildAs(
 				tableViews.get(firstTable).getAlias(),
 				getTable(tableViews.get(firstTable), scope)
 		);
-
+		
 		// 4. 逐个添加join
 		for (int i = 1; i < joinOrder.size(); i++) {
 			String currentTable = joinOrder.get(i);
-			String previousTable = joinOrder.get(i - 1);
+			
+			// 找到当前表与已加入表集合的最佳连接点
+			String bestJoinTable = findBestJoinTable(currentTable, joinOrder.subList(0, i), graph);
+			
 			TableView rightView = tableViews.get(currentTable);
-			TableView leftView = tableViews.get(previousTable);
-
+			TableView leftView = tableViews.get(bestJoinTable);
+			
 			// 获取join条件和类型
-			JoinRelation joinRelation = graph.getJoinRelation(previousTable, currentTable);
+			JoinRelation joinRelation = graph.getJoinRelation(bestJoinTable, currentTable);
 			SqlNode condition;
 			SqlLiteral joinType;
-
+			
 			if (joinRelation != null && !CollectionUtils.isEmpty(joinRelation.getJoinCondition())) {
 				// 使用预定义的join关系
 				condition = getCondition(joinRelation, scope, schema.getOntology().getDatabaseType());
@@ -804,102 +844,120 @@ public class JoinRender extends Renderer {
 						schema.getOntology().getDatabaseType());
 				joinType = SemanticNode.getJoinSqlLiteral("");
 			}
-
-			// 如果没有找到join条件，抛出异常
-			if (condition == null) {
-				throw new RuntimeException(String.format(
-						"Cannot find join condition between tables %s and %s",
-						previousTable, currentTable));
-			}
-
-			// 处理zipper join
-			if (Materialization.TimePartType.ZIPPER.equals(leftView.getDataModel().getTimePartType())
-					|| Materialization.TimePartType.ZIPPER.equals(rightView.getDataModel().getTimePartType())) {
-				SqlNode zipperCondition = getZipperCondition(leftView, rightView,
-						rightView.getDataModel(), schema, scope);
-				if (zipperCondition != null) {
-					condition = new SqlBasicCall(SqlStdOperatorTable.AND,
-							new ArrayList<>(Arrays.asList(condition, zipperCondition)),
-							SqlParserPos.ZERO, null);
-				}
-			}
-
+			
 			// 构建join节点
-			currentNode = new SqlJoin(
-					SqlParserPos.ZERO,
-					currentNode,
-					SqlLiteral.createBoolean(false, SqlParserPos.ZERO),
-					joinType,
-					SemanticNode.buildAs(rightView.getAlias(), getTable(rightView, scope)),
-					SqlLiteral.createSymbol(JoinConditionType.ON, SqlParserPos.ZERO),
-					condition
+			SqlNode joinNode = new SqlJoin(
+				SqlParserPos.ZERO,
+				currentNode,
+				SqlLiteral.createBoolean(false, SqlParserPos.ZERO),
+				joinType,
+				SemanticNode.buildAs(rightView.getAlias(), getTable(rightView, scope)),
+				SqlLiteral.createSymbol(JoinConditionType.ON, SqlParserPos.ZERO),
+				condition
 			);
+			
+			currentNode = joinNode;
 		}
-
+		
 		return currentNode;
 	}
 
-	/**
-	 * 找到最优的join顺序
-	 */
-	private List<String> findOptimalJoinOrder(List<DataModel> dataModels, JoinGraph graph,
+	// 找到最佳的连接表 - 与当前表有直接连接关系的已加入表
+	private String findBestJoinTable(String currentTable, List<String> addedTables, JoinGraph graph) {
+		for (String addedTable : addedTables) {
+			if (graph.hasEdge(currentTable, addedTable)) {
+				return addedTable;
+			}
+		}
+		// 如果没有直接连接，返回最后一个添加的表
+		return addedTables.get(addedTables.size() - 1);
+	}
+
+	// 放宽约束的join顺序算法
+	private List<String> findOptimalJoinOrderRelaxed(List<DataModel> dataModels, JoinGraph graph,
 			Set<String> queryMetrics, Set<String> queryDimension) {
 		// 1. 计算每个表的权重
 		Map<String, Integer> weights = new HashMap<>();
 		for (DataModel model : dataModels) {
 			int weight = 0;
-			// 增加包含查询字段的权重
 			weight += model.getMeasures().stream()
 					.filter(m -> queryMetrics.contains(m.getName()))
-					.count() * 2;  // 度量字段权重更高
+					.count() * 2;
 			weight += model.getDimensions().stream()
 					.filter(d -> queryDimension.contains(d.getName()))
 					.count();
-			// 增加连接数的权重
 			Set<String> neighbors = graph.getNeighbors(model.getName());
 			weight += (neighbors != null ? neighbors.size() : 0);
 			weights.put(model.getName(), weight);
 		}
 
-		// 2. 根据权重排序
-		List<String> tables = new ArrayList<>(dataModels.stream()
-				.map(DataModel::getName)
-				.collect(Collectors.toList()));
-
-		tables.sort((t1, t2) -> weights.get(t2).compareTo(weights.get(t1)));
-
-		// 3. 确保join顺序的连通性
+		// 2. 初始化结果列表和已访问集合
 		List<String> result = new ArrayList<>();
-		Set<String> added = new HashSet<>();
-		result.add(tables.get(0));
-		added.add(tables.get(0));
+		Set<String> visited = new HashSet<>();
+		
+		// 3. 找出所有未访问的表中权重最高的
+		String nextTable = null;
+		int maxWeight = Integer.MIN_VALUE;
+		
+		for (DataModel model : dataModels) {
+			String tableName = model.getName();
+			if (!visited.contains(tableName)) {
+				Integer weight = weights.get(tableName);
+				if (weight != null && weight > maxWeight) {
+					// 检查是否至少与一个已访问表有连接
+					// 第一个表不需要检查连接
+					maxWeight = weight;
+					nextTable = tableName;
+				}
+			}
+		}
+		
+		result.add(nextTable);
+		visited.add(nextTable);
 
-		while (result.size() < tables.size()) {
-			String nextTable = null;
-			int maxWeight = -1;
-
-			// 找到下一个最优的可连接表
-			for (String table : tables) {
-				if (!added.contains(table)) {
-					Set<String> neighbors = graph.getNeighbors(table);
-					if (neighbors != null && !Collections.disjoint(neighbors, added)) {
-						int weight = weights.get(table);
-						if (weight > maxWeight) {
+		// 4. 不再要求相邻表必须直接连接
+		while (visited.size() < dataModels.size()) {
+			// 找出所有未访问的表中权重最高的
+			nextTable = null;  // 重置变量，不要重新声明
+			maxWeight = Integer.MIN_VALUE;  // 重置变量，不要重新声明
+			
+			for (DataModel model : dataModels) {
+				String tableName = model.getName();
+				if (!visited.contains(tableName)) {
+					Integer weight = weights.get(tableName);
+					if (weight != null && weight > maxWeight) {
+						// 检查是否至少与一个已访问表有连接
+						boolean hasConnection = false;
+						for (String visitedTable : visited) {
+							if (graph.hasEdge(tableName, visitedTable)) {
+								hasConnection = true;
+								break;
+							}
+						}
+						
+						if (hasConnection) {
 							maxWeight = weight;
-							nextTable = table;
+							nextTable = tableName;
 						}
 					}
 				}
 			}
-
+			
+			// 如果没有找到连接的表，选择任意未访问表
 			if (nextTable == null) {
-				throw new RuntimeException("Cannot find valid join order for tables");
+				for (DataModel model : dataModels) {
+					String tableName = model.getName();
+					if (!visited.contains(tableName)) {
+						nextTable = tableName;
+						break;
+					}
+				}
 			}
-
+			
 			result.add(nextTable);
-			added.add(nextTable);
+			visited.add(nextTable);
 		}
-
+		
 		return result;
 	}
 
@@ -968,12 +1026,24 @@ public class JoinRender extends Renderer {
 		private Map<String, JoinRelation> joinConditions;
 
 		public JoinGraph() {
-			// 在构造函数中初始化Map
 			this.adjacencyList = new HashMap<>();
 			this.joinConditions = new HashMap<>();
 		}
 
 		public void addEdge(String table1, String table2, JoinRelation relation) {
+			if (table1 == null || table2 == null || relation == null) {
+				throw new IllegalArgumentException("Table names and relation cannot be null");
+			}
+
+			// 打印调试信息
+			log.debug("Adding edge between {} and {}", table1, table2);
+			if (relation.getJoinCondition() != null) {
+				for (Triple<String, String, String> condition : relation.getJoinCondition()) {
+					log.debug("Join condition: {}.{} {} {}.{}", 
+						table1, condition.getLeft(), condition.getMiddle(), table2, condition.getRight());
+				}
+			}
+
 			// 确保两个表都有对应的Set
 			adjacencyList.computeIfAbsent(table1, k -> new HashSet<>());
 			adjacencyList.computeIfAbsent(table2, k -> new HashSet<>());
@@ -983,41 +1053,68 @@ public class JoinRender extends Renderer {
 			adjacencyList.get(table2).add(table1);
 
 			// 存储join条件
-			joinConditions.put(table1 + "_" + table2, relation);
-			joinConditions.put(table2 + "_" + table1, relation);
+			String key1 = table1 + "_" + table2;
+			String key2 = table2 + "_" + table1;
+			joinConditions.put(key1, relation);
+			joinConditions.put(key2, relation);
 		}
 
 		public boolean hasEdge(String table1, String table2) {
+			if (table1 == null || table2 == null) {
+				return false;
+			}
+			
 			Set<String> neighbors = adjacencyList.get(table1);
-			return neighbors != null && neighbors.contains(table2);
-		}
-
-		public JoinRelation getJoinRelation(String table1, String table2) {
-			return joinConditions.get(table1 + "_" + table2);
+			boolean hasDirectEdge = neighbors != null && neighbors.contains(table2);
+			
+			// 打印调试信息
+			log.debug("Checking edge between {} and {}: {}", table1, table2, hasDirectEdge);
+			if (!hasDirectEdge) {
+				log.debug("No direct edge found. {} neighbors: {}", table1, neighbors);
+			}
+			
+			return hasDirectEdge;
 		}
 
 		public Set<String> getNeighbors(String table) {
-			return adjacencyList.getOrDefault(table, Collections.emptySet());
+			Set<String> neighbors = adjacencyList.get(table);
+			// 打印调试信息
+			log.debug("Getting neighbors for {}: {}", table, neighbors);
+			return neighbors != null ? new HashSet<>(neighbors) : new HashSet<>();
+		}
+
+		public JoinRelation getJoinRelation(String table1, String table2) {
+			String key = table1 + "_" + table2;
+			JoinRelation relation = joinConditions.get(key);
+			// 打印调试信息
+			log.debug("Getting join relation between {} and {}: {}", table1, table2, 
+				relation != null ? "found" : "not found");
+			return relation;
 		}
 
 		@Override
 		public String toString() {
-			StringBuilder sb = new StringBuilder("Join Relations:\n");
+			StringBuilder sb = new StringBuilder("Join Graph:\n");
+			
+			// 打印所有节点
+			sb.append("Nodes: ").append(String.join(", ", adjacencyList.keySet())).append("\n\n");
+			
+			// 打印所有边
+			sb.append("Edges:\n");
 			Set<String> printedPairs = new HashSet<>();
-
 			for (Map.Entry<String, Set<String>> entry : adjacencyList.entrySet()) {
 				String table1 = entry.getKey();
 				for (String table2 : entry.getValue()) {
-					// 确保每对表只打印一次
-					String pairKey = table1.compareTo(table2) < 0
-						? table1 + "_" + table2
+					String pairKey = table1.compareTo(table2) < 0 
+						? table1 + "_" + table2 
 						: table2 + "_" + table1;
-
+					
 					if (!printedPairs.contains(pairKey)) {
-						JoinRelation relation = joinConditions.get(table1 + "_" + table2);
-						if (relation != null && !CollectionUtils.isEmpty(relation.getJoinCondition())) {
+						JoinRelation relation = joinConditions.get(pairKey);
+						sb.append(String.format("  %s <-> %s\n", table1, table2));
+						if (relation != null && relation.getJoinCondition() != null) {
 							for (Triple<String, String, String> condition : relation.getJoinCondition()) {
-								sb.append(String.format("%s.%s %s %s.%s\n",
+								sb.append(String.format("    %s.%s %s %s.%s\n",
 									table1, condition.getLeft(),
 									condition.getMiddle(),
 									table2, condition.getRight()));
@@ -1032,3 +1129,4 @@ public class JoinRender extends Renderer {
 	}
 
 }
+

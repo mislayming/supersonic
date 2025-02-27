@@ -285,50 +285,76 @@ public class DataModelNode extends SemanticNode {
     }
 
     private static List<DataModel> findRelatedModelsByRelation(Ontology ontology,
-                                                               OntologyQuery queryParam, DataModel baseDataModel, Set<String> queryDimensions,
-                                                               Set<String> queryMeasures) {
+            OntologyQuery queryParam, DataModel baseDataModel, Set<String> queryDimensions,
+            Set<String> queryMeasures) {
         Set<String> joinDataModelNames = new HashSet<>();
         List<DataModel> joinDataModels = new ArrayList<>();
-        // 记录已处理的数据模型
-        Set<String> before = new HashSet<>();
-        before.add(baseDataModel.getName());
-
-        // 存储所有未匹配的度量和维度
-        Set<String> unmatchedMeasures = new HashSet<>(queryMeasures);
-        Set<String> unmatchedDimensions = new HashSet<>(queryDimensions);
-
-        // 移除基础模型已经匹配的度量和维度
-        removeMatchedItems(baseDataModel, unmatchedMeasures, unmatchedDimensions);
-
+        
         if (!CollectionUtils.isEmpty(ontology.getJoinRelations())) {
-            // 构建表之间的关联关系图
+            // 构建完整的join关系图
             Map<String, Set<String>> joinGraph = buildJoinGraph(ontology.getJoinRelations());
-
-            // 找到所有可能需要的目标表
-            Set<String> targetTables = findTablesWithRequiredData(ontology,
-                    unmatchedMeasures, unmatchedDimensions);
-
-            // 对于每个目标表，找到从baseModel到该表的路径
-            for (String targetTable : targetTables) {
-                List<String> path = findShortestPath(joinGraph,
-                        baseDataModel.getName(), targetTable, new HashSet<>());
-
-                if (path != null && !path.isEmpty()) {
-                    // 添加路径上的所有表
-                    joinDataModelNames.addAll(path);
-                    // 添加必要的join维度
-                    addRequiredJoinDimensions(path, ontology, queryParam);
+            
+            // 找到所有需要的表
+            Set<String> requiredTables = findTablesWithRequiredData(ontology, queryMeasures, queryDimensions);
+            
+            // 对于每个必需的表,找到从baseModel到该表的所有中间表
+            Set<String> allNeededTables = new HashSet<>();
+            allNeededTables.add(baseDataModel.getName());
+            
+            for (String targetTable : requiredTables) {
+                if (!targetTable.equals(baseDataModel.getName())) {
+                    // 找到所有可能的路径
+                    Set<String> intermediateTables = findAllIntermediateTables(
+                        joinGraph, 
+                        baseDataModel.getName(),
+                        targetTable
+                    );
+                    allNeededTables.addAll(intermediateTables);
                 }
             }
+            
+            joinDataModelNames.addAll(allNeededTables);
         }
-
-        // 构建最终的结果列表
+        
+        // 转换为DataModel列表
         if (!CollectionUtils.isEmpty(joinDataModelNames)) {
-            joinDataModelNames.add(baseDataModel.getName());
             return orderDataModels(joinDataModelNames, ontology);
         }
-
+        
         return Lists.newArrayList();
+    }
+
+    // 找到两个表之间所有可能的中间表
+    private static Set<String> findAllIntermediateTables(
+            Map<String, Set<String>> joinGraph, 
+            String start, 
+            String end) {
+        Set<String> result = new HashSet<>();
+        Set<String> visited = new HashSet<>();
+        findPathsDFS(joinGraph, start, end, visited, result);
+        return result;
+    }
+
+    private static void findPathsDFS(
+            Map<String, Set<String>> joinGraph,
+            String current,
+            String target,
+            Set<String> visited,
+            Set<String> allTables) {
+        
+        visited.add(current);
+        allTables.add(current);
+        
+        if (current.equals(target)) {
+            return;
+        }
+        
+        Set<String> neighbors = joinGraph.getOrDefault(current, Collections.emptySet());
+        for (String next : neighbors) {
+            if (!visited.contains(next)) {
+                findPathsDFS(joinGraph, next, target, visited, allTables);
+            }
+        }
     }
 
     // 构建表之间的关联关系图
@@ -370,88 +396,6 @@ public class DataModelNode extends SemanticNode {
         }
 
         return tables;
-    }
-
-    // 使用BFS找到最短路径
-    private static List<String> findShortestPath(Map<String, Set<String>> graph,
-                                                 String start, String end, Set<String> visited) {
-        if (start.equals(end)) {
-            return new ArrayList<>(Collections.singletonList(start));
-        }
-
-        Queue<List<String>> queue = new LinkedList<>();
-        queue.offer(new ArrayList<>(Collections.singletonList(start)));
-        visited.add(start);
-
-        while (!queue.isEmpty()) {
-            List<String> path = queue.poll();
-            String last = path.get(path.size() - 1);
-
-            Set<String> neighbors = graph.getOrDefault(last, Collections.emptySet());
-            for (String next : neighbors) {
-                if (!visited.contains(next)) {
-                    List<String> newPath = new ArrayList<>(path);
-                    newPath.add(next);
-
-                    if (next.equals(end)) {
-                        return newPath;
-                    }
-
-                    visited.add(next);
-                    queue.offer(newPath);
-                }
-            }
-        }
-
-        return null;
-    }
-
-    // 添加必要的join维度
-    private static void addRequiredJoinDimensions(List<String> path,
-                                                  Ontology ontology, OntologyQuery queryParam) {
-        for (int i = 0; i < path.size() - 1; i++) {
-            String current = path.get(i);
-            String next = path.get(i + 1);
-
-            // 找到这两个表之间的join关系
-            ontology.getJoinRelations().stream()
-                    .filter(relation -> (relation.getLeft().equals(current) &&
-                            relation.getRight().equals(next)) ||
-                            (relation.getLeft().equals(next) &&
-                                    relation.getRight().equals(current)))
-                    .findFirst()
-                    .ifPresent(relation -> {
-                        // 添加join条件中的维度
-                        relation.getJoinCondition().forEach(condition -> {
-                            queryParam.getDimensions().add(condition.getLeft());
-                            queryParam.getDimensions().add(condition.getRight());
-                        });
-                    });
-        }
-    }
-
-    private static void removeMatchedItems(DataModel baseModel,
-                                           Set<String> unmatchedMeasures, Set<String> unmatchedDimensions) {
-        // 移除基础模型中已匹配的度量
-        Set<String> baseMeasures = baseModel.getMeasures().stream()
-                .map(Measure::getName)
-                .collect(Collectors.toSet());
-        unmatchedMeasures.removeAll(baseMeasures);
-
-        // 检查维度中是否包含了一些度量
-        Set<String> baseDimensions = baseModel.getDimensions().stream()
-                .map(Dimension::getName)
-                .collect(Collectors.toSet());
-        // 添加标识符作为维度
-        baseModel.getIdentifiers().forEach(i -> baseDimensions.add(i.getName()));
-
-        // 如果有些度量实际上在维度中能找到，也需要移除
-        Set<String> measuresInDimensions = new HashSet<>(baseDimensions);
-        measuresInDimensions.retainAll(unmatchedMeasures);
-        unmatchedMeasures.removeAll(measuresInDimensions);
-
-        // 移除基础模型中已匹配的维度
-        unmatchedDimensions.removeAll(baseDimensions);
     }
 
     private static List<DataModel> orderDataModels(Set<String> joinDataModelNames, Ontology ontology) {
