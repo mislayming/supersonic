@@ -6,6 +6,8 @@ import com.tencent.supersonic.headless.core.pojo.QueryStatement;
 import com.tencent.supersonic.headless.core.translator.parser.calcite.RuntimeOptions;
 import com.tencent.supersonic.headless.core.translator.parser.calcite.S2CalciteSchema;
 import com.tencent.supersonic.headless.core.translator.parser.calcite.SqlBuilder;
+import com.tencent.supersonic.headless.core.translator.parser.calcite.SqlBuilder2;
+import com.tencent.supersonic.headless.core.translator.parser.calcite.render.Renderer;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.io.FileUtils;
 import org.springframework.stereotype.Component;
@@ -25,24 +27,36 @@ public class OntologyQueryParser implements QueryParser {
         return Objects.nonNull(queryStatement.getOntologyQuery());
     }
 
-    @Override
-    public void parse(QueryStatement queryStatement) throws Exception {
+
+    public void parse(QueryStatement queryStatement, boolean newBuilder) throws Exception {
         Ontology ontology = queryStatement.getOntology();
         S2CalciteSchema semanticSchema = S2CalciteSchema.builder()
                 .schemaKey("DATASET_" + queryStatement.getDataSetId()).ontology(ontology)
                 .runtimeOptions(RuntimeOptions.builder().minMaxTime(queryStatement.getMinMaxTime())
                         .enableOptimize(queryStatement.getEnableOptimize()).build())
                 .build();
-        SqlBuilder sqlBuilder = new SqlBuilder(semanticSchema);
-        String sql = sqlBuilder.buildOntologySql(queryStatement);
+
+        String sql = "";
+        if(newBuilder) {
+            SqlBuilder2 sqlBuilder = new SqlBuilder2(semanticSchema);
+            sql = sqlBuilder.buildOntologySql(queryStatement);
+        } else {
+            SqlBuilder sqlBuilder = new SqlBuilder(semanticSchema);
+            sql = sqlBuilder.buildOntologySql(queryStatement);
+        }
         System.out.println("-------final--------");
-        System.out.println(sql);
+        System.out.println(Renderer.simplifySQL(sql));
         queryStatement.setSql(sql);
+    }
+
+    @Override
+    public void parse(QueryStatement queryStatement) throws Exception {
+        this.parse(queryStatement, true);
     }
 
     public static void main(String[] args) throws Exception {
         // 指定要遍历的文件夹路径
-        String folderPath = "/Users/lang.ming/Downloads/error-log";
+        String folderPath = "/Users/wua.ming/Downloads/error-log";
         File folder = new File(folderPath);
 
         if (!folder.exists() || !folder.isDirectory()) {
@@ -61,18 +75,32 @@ public class OntologyQueryParser implements QueryParser {
         // 处理每个文件
         for (File file : files) {
 
-            //if(!file.getName().equals("9e4f916e-8c2e-4ea8-9846-e1b403e4221b.json")) continue;
+//            if(!file.getName().equals("0c79b5ba-f691-47d7-a1c2-e0bcd4864321.json")) continue; // 缺少 JOIN 条件
+//            if(!file.getName().equals("d3863502-8af8-43f2-b4df-8a964937332f.json")) continue; // 缺少 FROM case
+//            if(!file.getName().equals("9e4f916e-8c2e-4ea8-9846-e1b403e4221b.json")) continue; // 空的select 的查询
+//            if(!file.getName().equals("b4de0d13-cdbd-4c75-837b-a59bc8ca2d0e.json")) continue;
 
             System.out.println("\n========== Processing: " + file.getName() + " ==========");
+
             try {
                 String jsonContent = FileUtils.readFileToString(file, "UTF-8");
                 QueryStatement statement = JSONObject.parseObject(jsonContent, QueryStatement.class);
-                new OntologyQueryParser().parse(statement);
+                new OntologyQueryParser().parse(statement, true);
             } catch (Exception e) {
                 System.err.println("Error processing file: " + file.getName());
                 errList.add("Error processing file: " + file.getName());
                 e.printStackTrace();
             }
+
+//            try {
+//                String jsonContent = FileUtils.readFileToString(file, "UTF-8");
+//                QueryStatement statement = JSONObject.parseObject(jsonContent, QueryStatement.class);
+//                new OntologyQueryParser().parse(statement, false);
+//            } catch (Exception e) {
+//                System.err.println("Error processing file: " + file.getName());
+//                errList.add("Error processing file: " + file.getName());
+//                e.printStackTrace();
+//            }
         }
 
         errList.forEach(System.out::println);

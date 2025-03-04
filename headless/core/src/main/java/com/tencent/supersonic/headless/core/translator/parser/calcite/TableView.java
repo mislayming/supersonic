@@ -1,5 +1,7 @@
 package com.tencent.supersonic.headless.core.translator.parser.calcite;
 
+import com.google.common.collect.Lists;
+import com.google.common.collect.Sets;
 import com.tencent.supersonic.headless.core.translator.parser.s2sql.DataModel;
 import lombok.Data;
 import org.apache.calcite.sql.*;
@@ -8,11 +10,15 @@ import org.apache.calcite.sql.parser.SqlParserPos;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /** basic query project */
 @Data
 public class TableView {
+
+    private Set<String> fields = Sets.newHashSet();
+    private List<SqlNode> select = Lists.newArrayList();
 
     private List<SqlNode> filter = new ArrayList<>();
     private List<SqlNode> dimension = new ArrayList<>();

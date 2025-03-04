@@ -1,12 +1,11 @@
 package com.tencent.supersonic.headless.core.translator.parser.calcite.node;
 
 import com.google.common.collect.Lists;
+import com.google.common.collect.Sets;
 import com.tencent.supersonic.common.calcite.Configuration;
 import com.tencent.supersonic.common.jsqlparser.SqlSelectHelper;
 import com.tencent.supersonic.common.pojo.enums.EngineType;
-import com.tencent.supersonic.headless.core.pojo.JoinRelation;
-import com.tencent.supersonic.headless.core.pojo.Ontology;
-import com.tencent.supersonic.headless.core.pojo.OntologyQuery;
+import com.tencent.supersonic.headless.core.pojo.*;
 import com.tencent.supersonic.headless.core.translator.parser.calcite.S2CalciteSchema;
 import com.tencent.supersonic.headless.core.translator.parser.calcite.SchemaBuilder;
 import com.tencent.supersonic.headless.core.translator.parser.s2sql.*;
@@ -185,32 +184,64 @@ public class DataModelNode extends SemanticNode {
         mergeQueryFilterDimensionMeasure(ontology, queryParam, queryDimensions, queryMeasures,
                 scope);
 
-        // first, find the base model
-        DataModel baseDataModel = findBaseModel(ontology, queryMeasures, queryDimensions);
-        if (Objects.isNull(baseDataModel)) {
-            throw new RuntimeException(
-                    String.format("could not find matching dataModel, dimensions:%s, measures:%s",
-                            queryDimensions, queryMeasures));
-        }
-        // if the base model matches all queried measures and dimensions, just return
-        if (checkMatch(baseDataModel, queryMeasures, queryDimensions)) {
-            log.debug("baseDataModel match all measures and dimensions");
-            return Collections.singletonList(baseDataModel);
-        }
+        Map<String, DataModel> dataModelMap = new HashMap<>();
+        ontology.getDataModelMap().forEach((modelName, model) -> {
+            model.getMeasures().forEach(m -> {
+                if (!dataModelMap.containsKey(modelName) && queryMeasures.contains(m.getName())) {
+                    dataModelMap.put(modelName, model);
+                }
+            });
 
-        // second, traverse the ontology to find other related dataModels
-        List<DataModel> relatedDataModels = findRelatedModelsByRelation(ontology, queryParam,
-                baseDataModel, queryDimensions, queryMeasures);
-        if (CollectionUtils.isEmpty(relatedDataModels)) {
-            relatedDataModels = findRelatedModelsByIdentifier(ontology, baseDataModel,
-                    queryDimensions, queryMeasures);
-        }
-        if (CollectionUtils.isEmpty(relatedDataModels)) {
-            relatedDataModels = Collections.singletonList(baseDataModel);
-        }
+            model.getDimensions().forEach(d -> {
+                if (!dataModelMap.containsKey(modelName) && queryDimensions.contains(d.getName())) {
+                    dataModelMap.put(modelName, model);
+                }
+            });
 
-        log.debug("relatedDataModels {}", relatedDataModels);
-        return relatedDataModels;
+            model.getIdentifiers().forEach(i -> {
+                if (!dataModelMap.containsKey(modelName)
+                        && (queryDimensions.contains(i.getName())) || queryMeasures.contains(i.getName())) {
+                    dataModelMap.put(modelName, model);
+                }
+            });
+        });
+
+        return new ArrayList<>(dataModelMap.values());
+
+//        for (Map.Entry<String, DataModel> entry : ontology.getDataModelMap().entrySet()) {
+//            Set<String> sourceMeasure = entry.getValue().getMeasures().stream()
+//                    .map(Measure::getName).collect(Collectors.toSet());
+//            sourceMeasure.retainAll(queryMeasures);
+//            dataModelMeasuresCount.put(entry.getKey(), sourceMeasure.size());
+//        }
+//
+//
+//        // first, find the base model
+//        DataModel baseDataModel = findBaseModel(ontology, queryMeasures, queryDimensions);
+//        if (Objects.isNull(baseDataModel)) {
+//            throw new RuntimeException(
+//                    String.format("could not find matching dataModel, dimensions:%s, measures:%s",
+//                            queryDimensions, queryMeasures));
+//        }
+//        // if the base model matches all queried measures and dimensions, just return
+//        if (checkMatch(baseDataModel, queryMeasures, queryDimensions)) {
+//            log.debug("baseDataModel match all measures and dimensions");
+//            return Collections.singletonList(baseDataModel);
+//        }
+//
+//        // second, traverse the ontology to find other related dataModels
+//        List<DataModel> relatedDataModels = findRelatedModelsByRelation(ontology, queryParam,
+//                baseDataModel, queryDimensions, queryMeasures);
+//        if (CollectionUtils.isEmpty(relatedDataModels)) {
+//            relatedDataModels = findRelatedModelsByIdentifier(ontology, baseDataModel,
+//                    queryDimensions, queryMeasures);
+//        }
+//        if (CollectionUtils.isEmpty(relatedDataModels)) {
+//            relatedDataModels = Collections.singletonList(baseDataModel);
+//        }
+//
+//        log.debug("relatedDataModels {}", relatedDataModels);
+//        return relatedDataModels;
     }
 
     private static DataModel findBaseModel(Ontology ontology, Set<String> queryMeasures,
