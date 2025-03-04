@@ -13,6 +13,7 @@ import org.apache.calcite.plan.hep.HepPlanner;
 import org.apache.calcite.plan.hep.HepProgramBuilder;
 import org.apache.calcite.rel.RelNode;
 import org.apache.calcite.rel.rel2sql.RelToSqlConverter;
+import org.apache.calcite.rel.rules.CoreRules;
 import org.apache.calcite.sql.JoinType;
 import org.apache.calcite.sql.SqlAsOperator;
 import org.apache.calcite.sql.SqlBasicCall;
@@ -408,6 +409,34 @@ public abstract class SemanticNode {
             SemanticSqlDialect sqlDialect = SqlDialectFactory.getSqlDialect(engineType);
             hepProgramBuilder.addRuleInstance(
                     new FilterToGroupScanRule(FilterToGroupScanRule.DEFAULT, schema));
+
+            hepProgramBuilder.addRuleInstance(CoreRules.AGGREGATE_PROJECT_MERGE);
+            hepProgramBuilder.addRuleInstance(CoreRules.AGGREGATE_PROJECT_PULL_UP_CONSTANTS);
+            hepProgramBuilder.addRuleInstance(CoreRules.AGGREGATE_PROJECT_STAR_TABLE);
+            hepProgramBuilder.addRuleInstance(CoreRules.AGGREGATE_MERGE);
+            hepProgramBuilder.addRuleInstance(CoreRules.AGGREGATE_REMOVE);
+            hepProgramBuilder.addRuleInstance(CoreRules.AGGREGATE_JOIN_JOIN_REMOVE);
+            hepProgramBuilder.addRuleInstance(CoreRules.AGGREGATE_JOIN_REMOVE);
+            hepProgramBuilder.addRuleInstance(CoreRules.CALC_MERGE);
+            hepProgramBuilder.addRuleInstance(CoreRules.CALC_REMOVE);
+            hepProgramBuilder.addRuleInstance(CoreRules.CALC_REDUCE_EXPRESSIONS);
+            hepProgramBuilder.addRuleInstance(CoreRules.CALC_SPLIT);
+            hepProgramBuilder.addRuleInstance(CoreRules.EXCHANGE_REMOVE_CONSTANT_KEYS);
+            hepProgramBuilder.addRuleInstance(CoreRules.FILTER_INTO_JOIN);
+            hepProgramBuilder.addRuleInstance(CoreRules.FILTER_MERGE);
+            hepProgramBuilder.addRuleInstance(CoreRules.FILTER_CALC_MERGE);
+            hepProgramBuilder.addRuleInstance(CoreRules.PROJECT_AGGREGATE_MERGE);
+            hepProgramBuilder.addRuleInstance(CoreRules.PROJECT_CALC_MERGE);
+            hepProgramBuilder.addRuleInstance(CoreRules.PROJECT_JOIN_JOIN_REMOVE);
+            hepProgramBuilder.addRuleInstance(CoreRules.PROJECT_JOIN_REMOVE);
+            hepProgramBuilder.addRuleInstance(CoreRules.PROJECT_MERGE);
+            hepProgramBuilder.addRuleInstance(CoreRules.PROJECT_MULTI_JOIN_MERGE);
+            hepProgramBuilder.addRuleInstance(CoreRules.PROJECT_REMOVE);
+            hepProgramBuilder.addRuleInstance(CoreRules.JOIN_CONDITION_PUSH);
+            hepProgramBuilder.addRuleInstance(CoreRules.JOIN_ASSOCIATE);
+
+
+
             RelOptPlanner relOptPlanner = new HepPlanner(hepProgramBuilder.build());
             RelToSqlConverter converter = new RelToSqlConverter(sqlDialect);
             SqlValidator sqlValidator = Configuration.getSqlValidator(
