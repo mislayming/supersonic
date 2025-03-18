@@ -1,6 +1,5 @@
 package com.tencent.supersonic.headless.core.translator.parser;
 
-import com.google.common.collect.Lists;
 import com.tencent.supersonic.common.jsqlparser.SqlAsHelper;
 import com.tencent.supersonic.common.jsqlparser.SqlReplaceHelper;
 import com.tencent.supersonic.common.jsqlparser.SqlSelectFunctionHelper;
@@ -58,25 +57,19 @@ public class SqlQueryParser implements QueryParser {
         }
 
         // build ontologyQuery
-        List<String> queryFields = SqlSelectHelper.getAllSelectFields(sqlQuery.getSql());
-        List<MetricSchemaResp> metricSchemas = getMetrics(semanticSchemaResp, queryFields);
+        List<String> allFields = SqlSelectHelper.getAllSelectFields(sqlQuery.getSql());
+        List<MetricSchemaResp> metricSchemas = getMetrics(semanticSchemaResp, allFields);
         List<String> metrics =
                 metricSchemas.stream().map(SchemaItem::getBizName).collect(Collectors.toList());
-        List<DimSchemaResp> dimensionSchemas = getDimensions(semanticSchemaResp, queryFields);
-        List<String> dimensions =
-                dimensionSchemas.stream().map(SchemaItem::getBizName).collect(Collectors.toList());
+        Set<String> dimensions = getDimensions(semanticSchemaResp, allFields);
         // check if there are fields not matched with any metric or dimension
-        if (queryFields.size() > metricSchemas.size() + dimensions.size()) {
-            List<String> semanticFields = Lists.newArrayList();
-            metricSchemas.forEach(m -> semanticFields.add(m.getBizName()));
-            dimensionSchemas.forEach(d -> semanticFields.add(d.getBizName()));
-            String errMsg =
-                    String.format("Querying columns[%s] not matched with semantic fields[%s].",
-                            queryFields, semanticFields);
-            queryStatement.setErrMsg(errMsg);
-            queryStatement.setStatus(1);
-            return;
-        }
+        // 此处不够严谨: TODO SqlSelectHelper.getAllSelectFields把别名也一起获取了。 确认supersonic如何修改。如:  SELECT 业务实体名称, SUM(支出金额) AS _支出金额_ FROM 沈工院_SRM GROUP BY 业务实体名称 ORDER BY _支出金额_ DESC LIMIT 8
+//        if (allFields.size() > metricSchemas.size() + dimensions.size()) {
+//            queryStatement.setErrMsg(
+//                    "There are querying columns in the SQL not matched with any semantic field.");
+//            queryStatement.setStatus(1);
+//            return;
+//        }
 
         OntologyQuery ontologyQuery = new OntologyQuery();
         ontologyQuery.getMetrics().addAll(metrics);
@@ -124,7 +117,7 @@ public class SqlQueryParser implements QueryParser {
             return AggOption.OUTER;
         }
         long defaultAggNullCnt = metricSchemas.stream().filter(
-                m -> Objects.isNull(m.getDefaultAgg()) || StringUtils.isBlank(m.getDefaultAgg()))
+                        m -> Objects.isNull(m.getDefaultAgg()) || StringUtils.isBlank(m.getDefaultAgg()))
                 .count();
         if (defaultAggNullCnt > 0) {
             log.debug("getAggOption find null defaultAgg metric set to NATIVE");
@@ -133,19 +126,19 @@ public class SqlQueryParser implements QueryParser {
         return AggOption.DEFAULT;
     }
 
-    private List<DimSchemaResp> getDimensions(SemanticSchemaResp semanticSchemaResp,
-            List<String> allFields) {
-        Map<String, DimSchemaResp> dimensionLowerToNameMap =
-                semanticSchemaResp.getDimensions().stream().collect(Collectors
-                        .toMap(entry -> entry.getBizName().toLowerCase(), entry -> entry));
+    private Set<String> getDimensions(SemanticSchemaResp semanticSchemaResp,
+                                      List<String> allFields) {
+        Map<String, String> dimensionLowerToNameMap = semanticSchemaResp.getDimensions().stream()
+                .collect(Collectors.toMap(entry -> entry.getBizName().toLowerCase(),
+                        SchemaItem::getBizName, (k1, k2) -> k1));
         return allFields.stream()
                 .filter(entry -> dimensionLowerToNameMap.containsKey(entry.toLowerCase()))
                 .map(entry -> dimensionLowerToNameMap.get(entry.toLowerCase()))
-                .collect(Collectors.toList());
+                .collect(Collectors.toSet());
     }
 
     private List<MetricSchemaResp> getMetrics(SemanticSchemaResp semanticSchemaResp,
-            List<String> allFields) {
+                                              List<String> allFields) {
         Map<String, MetricSchemaResp> metricLowerToNameMap =
                 semanticSchemaResp.getMetrics().stream().collect(Collectors
                         .toMap(entry -> entry.getBizName().toLowerCase(), entry -> entry));
@@ -157,7 +150,7 @@ public class SqlQueryParser implements QueryParser {
 
 
     private void generateDerivedMetric(SqlGenerateUtils sqlGenerateUtils,
-            QueryStatement queryStatement) {
+                                       QueryStatement queryStatement) {
         SemanticSchemaResp semanticSchemaResp = queryStatement.getSemanticSchema();
         SqlQuery sqlParam = queryStatement.getSqlQuery();
         OntologyQuery ontologyParam = queryStatement.getOntologyQuery();
@@ -186,8 +179,8 @@ public class SqlQueryParser implements QueryParser {
     }
 
     private Map<String, String> generateDerivedMetric(SqlGenerateUtils sqlGenerateUtils,
-            SemanticSchemaResp semanticSchemaResp, AggOption aggOption, Set<String> metrics,
-            Set<String> dimensions, Set<String> measures) {
+                                                      SemanticSchemaResp semanticSchemaResp, AggOption aggOption, Set<String> metrics,
+                                                      Set<String> dimensions, Set<String> measures) {
         Map<String, String> result = new HashMap<>();
         List<MetricSchemaResp> metricResps = semanticSchemaResp.getMetrics();
         List<DimSchemaResp> dimensionResps = semanticSchemaResp.getDimensions();
@@ -244,10 +237,10 @@ public class SqlQueryParser implements QueryParser {
     /**
      * special process for hanaDB,the sap hana DB don't support the chinese name as the column name,
      * so we need to quote the column name after converting the convertNameToBizName called
-     * 
+     *
      * sap hana DB will auto translate the colume to upper case letter if not quoted. also we need
      * to quote the field name if it is a lower case letter.
-     * 
+     *
      * @param queryStatement
      * @param sql
      * @return
@@ -313,11 +306,11 @@ public class SqlQueryParser implements QueryParser {
     protected Map<String, String> getFieldNameToBizNameMap(SemanticSchemaResp semanticSchemaResp) {
         // support fieldName and field alias to bizName
         Map<String, String> dimensionResults = semanticSchemaResp.getDimensions().stream().flatMap(
-                entry -> getPairStream(entry.getAlias(), entry.getName(), entry.getBizName()))
+                        entry -> getPairStream(entry.getAlias(), entry.getName(), entry.getBizName()))
                 .collect(Collectors.toMap(Pair::getLeft, Pair::getRight, (k1, k2) -> k1));
 
         Map<String, String> metricResults = semanticSchemaResp.getMetrics().stream().flatMap(
-                entry -> getPairStream(entry.getAlias(), entry.getName(), entry.getBizName()))
+                        entry -> getPairStream(entry.getAlias(), entry.getName(), entry.getBizName()))
                 .collect(Collectors.toMap(Pair::getLeft, Pair::getRight, (k1, k2) -> k1));
 
         dimensionResults.putAll(metricResults);
@@ -325,7 +318,7 @@ public class SqlQueryParser implements QueryParser {
     }
 
     private Stream<Pair<String, String>> getPairStream(String aliasStr, String name,
-            String bizName) {
+                                                       String bizName) {
         Set<Pair<String, String>> elements = new HashSet<>();
         elements.add(Pair.of(name, bizName));
         if (StringUtils.isNotBlank(aliasStr)) {

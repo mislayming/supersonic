@@ -34,14 +34,9 @@ import dev.langchain4j.provider.ModelProvider;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.util.StopWatch;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 import static com.tencent.supersonic.headless.chat.parser.ParserConfig.PARSER_EXEMPLAR_RECALL_NUMBER;
@@ -78,6 +73,7 @@ public class NL2SQLParser implements ChatQueryParser {
         if (!parseContext.enableNL2SQL()) {
             return;
         }
+        StopWatch stopWatch = new StopWatch();
 
         // first go with rule-based parsers unless the user has already selected one parse.
         if (Objects.isNull(parseContext.getRequest().getSelectedParse())) {
@@ -95,15 +91,23 @@ public class NL2SQLParser implements ChatQueryParser {
             for (Long datasetId : requestedDatasets) {
                 queryNLReq.setDataSetIds(Collections.singleton(datasetId));
                 ChatParseResp parseResp = new ChatParseResp(parseContext.getRequest().getQueryId());
-                for (MapModeEnum mode : Lists.newArrayList(MapModeEnum.STRICT,
-                        MapModeEnum.MODERATE)) {
-                    queryNLReq.setMapModeEnum(mode);
-                    doParse(queryNLReq, parseResp);
-                }
+//                for (MapModeEnum mode : Lists.newArrayList(MapModeEnum.STRICT,
+//                        MapModeEnum.MODERATE)) {
+//                    queryNLReq.setMapModeEnum(mode);
+//                    stopWatch.start("NL2SQLParser MODE " + mode.name());
+//                    log.info("START NL2SQLParser MODE " + mode.name());
+//                    doParse(queryNLReq, parseResp);
+//                    stopWatch.stop();
+//                    log.info("END NL2SQLParser MODE " + mode.name() + " TIME[{}]ms", stopWatch.lastTaskInfo().getTimeMillis());
+//                }
 
                 if (parseResp.getSelectedParses().isEmpty() && candidateParses.isEmpty()) {
                     queryNLReq.setMapModeEnum(MapModeEnum.LOOSE);
+                    stopWatch.start("NL2SQLParser MODE LOOSE");
+                    log.info("START NL2SQLParser MODE LOOSE");
                     doParse(queryNLReq, parseResp);
+                    stopWatch.stop();
+                    log.info("END NL2SQLParser MODE LOOSE TIME[{}]ms", stopWatch.lastTaskInfo().getTimeMillis());
                 }
 
                 if (parseResp.getSelectedParses().isEmpty()) {
@@ -134,6 +138,9 @@ public class NL2SQLParser implements ChatQueryParser {
                 return;
             }
 
+            stopWatch.start("NL2SQLParser NEED LLM PARSE");
+            log.info("START NL2SQLParser NEED LLM PARSE");
+
             QueryNLReq queryNLReq = QueryReqConverter.buildQueryNLReq(parseContext);
             queryNLReq.setText2SQLType(Text2SQLType.LLM_OR_RULE);
             SemanticParseInfo userSelectParse = parseContext.getRequest().getSelectedParse();
@@ -144,6 +151,8 @@ public class NL2SQLParser implements ChatQueryParser {
             rewriteMultiTurn(parseContext, queryNLReq);
             addDynamicExemplars(parseContext, queryNLReq);
             doParse(queryNLReq, parseContext.getResponse());
+            stopWatch.stop();
+            log.info("END NL2SQLParser NEED LLM PARSE TIME:[{}]ms", stopWatch.lastTaskInfo().getTimeMillis());
 
             // try again with all semantic fields passed to LLM
             if (parseContext.getResponse().getState().equals(ParseResp.ParseState.FAILED)) {

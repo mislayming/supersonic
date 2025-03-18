@@ -74,3 +74,41 @@ CREATE TABLE IF NOT EXISTS `brand_revenue` (
     `profit_growth_year_on_year` double NOT NULL
     );
 
+CREATE TABLE  IF NOT EXISTS  `tv_channel` (
+      "id" TEXT NOT NULL,
+      "series_name" TEXT DEFAULT NULL,
+      "Country" TEXT DEFAULT NULL,
+      "Language" TEXT DEFAULT NULL,
+      "Content" TEXT DEFAULT NULL,
+      "Pixel_aspect_ratio_PAR" TEXT DEFAULT NULL,
+      "Hight_definition_TV" TEXT DEFAULT NULL,
+      "Pay_per_view_PPV" TEXT DEFAULT NULL,
+      "Package_Option" TEXT DEFAULT NULL,
+      PRIMARY KEY ("id")
+);
+
+CREATE TABLE IF NOT EXISTS   "cartoon" (
+   "id" REAL NOT NULL,
+   "Title" TEXT DEFAULT NULL,
+   "Directed_by" TEXT DEFAULT NULL,
+   "Written_by" TEXT DEFAULT NULL,
+   "Original_air_date" TEXT DEFAULT NULL,
+   "Production_code" REAL DEFAULT NULL,
+   "Channel" TEXT DEFAULT NULL,
+   PRIMARY KEY ("id"),
+   FOREIGN KEY ("Channel") REFERENCES "tv_channel" ("id")
+);
+
+CREATE TABLE IF NOT EXISTS  "tv_series" (
+     "id" REAL NOT NULL,
+     "Episode" TEXT DEFAULT NULL,
+     "Air_Date" TEXT DEFAULT NULL,
+     "Rating" TEXT DEFAULT NULL,
+     "Share" REAL DEFAULT NULL,
+     "18_49_Rating_Share" TEXT DEFAULT NULL,
+     "Viewers_m" TEXT DEFAULT NULL,
+     "Weekly_Rank" REAL DEFAULT NULL,
+     "Channel" TEXT DEFAULT NULL,
+     PRIMARY KEY ("id"),
+     FOREIGN KEY ("Channel") REFERENCES "tv_channel" ("id")
+);

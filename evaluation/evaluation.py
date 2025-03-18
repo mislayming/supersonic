@@ -32,14 +32,13 @@ import yaml
 import re
 
 from process_sql import tokenize, get_schema, get_tables_with_alias, Schema, get_sql
-from build_pred_result import read_query,get_pred_result
+from build_pred_result import read_query, get_pred_result
 from build_tables import build_table
 
 # Flag to disable value evaluation
 DISABLE_VALUE = True
 # Flag to disable distinct in select evaluation
 DISABLE_DISTINCT = True
-
 
 CLAUSE_KEYWORDS = ('select', 'from', 'where', 'group', 'order', 'limit', 'intersect', 'union', 'except')
 JOIN_KEYWORDS = ('join', 'on', 'as')
@@ -55,7 +54,6 @@ TABLE_TYPE = {
 COND_OPS = ('and', 'or')
 SQL_OPS = ('intersect', 'union', 'except')
 ORDER_OPS = ('desc', 'asc')
-
 
 HARDNESS = {
     "component1": ('where', 'group', 'order', 'limit', 'join', 'or', 'like'),
@@ -109,10 +107,10 @@ def F1(acc, rec):
 
 def get_scores(count, pred_total, label_total):
     if pred_total != label_total:
-        return 0,0,0
+        return 0, 0, 0
     elif count == pred_total:
-        return 1,1,1
-    return 0,0,0
+        return 1, 1, 1
+    return 0, 0, 0
 
 
 def eval_sel(pred, label):
@@ -194,7 +192,8 @@ def eval_order(pred, label):
     if len(label['orderBy']) > 0:
         label_total = 1
     if len(label['orderBy']) > 0 and pred['orderBy'] == label['orderBy'] and \
-            ((pred['limit'] is None and label['limit'] is None) or (pred['limit'] is not None and label['limit'] is not None)):
+            ((pred['limit'] is None and label['limit'] is None) or (
+                    pred['limit'] is not None and label['limit'] is not None)):
         cnt = 1
     return label_total, pred_total, cnt
 
@@ -206,8 +205,8 @@ def eval_and_or(pred, label):
     label_ao = set(label_ao)
 
     if pred_ao == label_ao:
-        return 1,1,1
-    return len(pred_ao),len(label_ao),0
+        return 1, 1, 1
+    return len(pred_ao), len(label_ao), 0
 
 
 def get_nestedSQL(sql):
@@ -341,7 +340,7 @@ def count_others(sql):
     agg_count += count_agg(sql['groupBy'])
     if len(sql['orderBy']) > 0:
         agg_count += count_agg([unit[1] for unit in sql['orderBy'][1] if unit[1]] +
-                            [unit[2] for unit in sql['orderBy'][1] if unit[2]])
+                               [unit[2] for unit in sql['orderBy'][1] if unit[2]])
     agg_count += count_agg(sql['having'])
     if agg_count > 1:
         count += 1
@@ -363,6 +362,7 @@ def count_others(sql):
 
 class Evaluator:
     """A simple evaluator"""
+
     def __init__(self):
         self.partial_scores = None
 
@@ -401,39 +401,40 @@ class Evaluator:
 
         label_total, pred_total, cnt, cnt_wo_agg = eval_sel(pred, label)
         acc, rec, f1 = get_scores(cnt, pred_total, label_total)
-        res['select'] = {'acc': acc, 'rec': rec, 'f1': f1,'label_total':label_total,'pred_total':pred_total}
+        res['select'] = {'acc': acc, 'rec': rec, 'f1': f1, 'label_total': label_total, 'pred_total': pred_total}
         acc, rec, f1 = get_scores(cnt_wo_agg, pred_total, label_total)
-        res['select(no AGG)'] = {'acc': acc, 'rec': rec, 'f1': f1,'label_total':label_total,'pred_total':pred_total}
+        res['select(no AGG)'] = {'acc': acc, 'rec': rec, 'f1': f1, 'label_total': label_total, 'pred_total': pred_total}
 
         label_total, pred_total, cnt, cnt_wo_agg = eval_where(pred, label)
         acc, rec, f1 = get_scores(cnt, pred_total, label_total)
-        res['where'] = {'acc': acc, 'rec': rec, 'f1': f1,'label_total':label_total,'pred_total':pred_total}
+        res['where'] = {'acc': acc, 'rec': rec, 'f1': f1, 'label_total': label_total, 'pred_total': pred_total}
         acc, rec, f1 = get_scores(cnt_wo_agg, pred_total, label_total)
-        res['where(no OP)'] = {'acc': acc, 'rec': rec, 'f1': f1,'label_total':label_total,'pred_total':pred_total}
+        res['where(no OP)'] = {'acc': acc, 'rec': rec, 'f1': f1, 'label_total': label_total, 'pred_total': pred_total}
 
         label_total, pred_total, cnt = eval_group(pred, label)
         acc, rec, f1 = get_scores(cnt, pred_total, label_total)
-        res['group(no Having)'] = {'acc': acc, 'rec': rec, 'f1': f1,'label_total':label_total,'pred_total':pred_total}
+        res['group(no Having)'] = {'acc': acc, 'rec': rec, 'f1': f1, 'label_total': label_total,
+                                   'pred_total': pred_total}
 
         label_total, pred_total, cnt = eval_having(pred, label)
         acc, rec, f1 = get_scores(cnt, pred_total, label_total)
-        res['group'] = {'acc': acc, 'rec': rec, 'f1': f1,'label_total':label_total,'pred_total':pred_total}
+        res['group'] = {'acc': acc, 'rec': rec, 'f1': f1, 'label_total': label_total, 'pred_total': pred_total}
 
         label_total, pred_total, cnt = eval_order(pred, label)
         acc, rec, f1 = get_scores(cnt, pred_total, label_total)
-        res['order'] = {'acc': acc, 'rec': rec, 'f1': f1,'label_total':label_total,'pred_total':pred_total}
+        res['order'] = {'acc': acc, 'rec': rec, 'f1': f1, 'label_total': label_total, 'pred_total': pred_total}
 
         label_total, pred_total, cnt = eval_and_or(pred, label)
         acc, rec, f1 = get_scores(cnt, pred_total, label_total)
-        res['and/or'] = {'acc': acc, 'rec': rec, 'f1': f1,'label_total':label_total,'pred_total':pred_total}
+        res['and/or'] = {'acc': acc, 'rec': rec, 'f1': f1, 'label_total': label_total, 'pred_total': pred_total}
 
         label_total, pred_total, cnt = eval_IUEN(pred, label)
         acc, rec, f1 = get_scores(cnt, pred_total, label_total)
-        res['IUEN'] = {'acc': acc, 'rec': rec, 'f1': f1,'label_total':label_total,'pred_total':pred_total}
+        res['IUEN'] = {'acc': acc, 'rec': rec, 'f1': f1, 'label_total': label_total, 'pred_total': pred_total}
 
         label_total, pred_total, cnt = eval_keywords(pred, label)
         acc, rec, f1 = get_scores(cnt, pred_total, label_total)
-        res['keywords'] = {'acc': acc, 'rec': rec, 'f1': f1,'label_total':label_total,'pred_total':pred_total}
+        res['keywords'] = {'acc': acc, 'rec': rec, 'f1': f1, 'label_total': label_total, 'pred_total': pred_total}
 
         return res
 
@@ -482,7 +483,7 @@ def print_scores(scores, etype):
             print("{:20} {:<20.3f} {:<20.3f} {:<20.3f} {:<20.3f} {:<20.3f}".format(type_, *this_scores))
 
 
-def evaluate(gold, predict, db_dir, etype, kmaps,query_path,time_cost):
+def evaluate(gold, predict, db_dir, etype, kmaps, query_path, time_cost):
     with open(gold) as f:
         glist = [l.strip().split('\t') for l in f.readlines() if len(l.strip()) > 0]
 
@@ -491,28 +492,28 @@ def evaluate(gold, predict, db_dir, etype, kmaps,query_path,time_cost):
     # plist = [("select max(Share),min(Share) from performance where Type != 'terminal'", "orchestra")]
     # glist = [("SELECT max(SHARE) ,  min(SHARE) FROM performance WHERE TYPE != 'Live final'", "orchestra")]
     evaluator = Evaluator()
-    #print(plist)
+    # print(plist)
     levels = ['easy', 'medium', 'hard', 'extra', 'all']
     partial_types = ['select', 'select(no AGG)', 'where', 'where(no OP)', 'group(no Having)',
                      'group', 'order', 'and/or', 'IUEN', 'keywords']
     entries = []
     scores = {}
-    log_list=[]
+    log_list = []
     for level in levels:
         scores[level] = {'count': 0, 'partial': {}, 'exact': 0.}
         scores[level]['exec'] = 0
         for type_ in partial_types:
-            scores[level]['partial'][type_] = {'acc': 0., 'rec': 0., 'f1': 0.,'acc_count':0,'rec_count':0}
+            scores[level]['partial'][type_] = {'acc': 0., 'rec': 0., 'f1': 0., 'acc_count': 0, 'rec_count': 0}
 
     eval_err_num = 0
-    questions=read_query(query_path)
-    index=0
+    questions = read_query(query_path)
+    index = 0
     for p, g in zip(plist, glist):
         p_str = p[0]
         g_str, db = g
         db_name = db
         # db = os.path.join(db_dir, db, db + ".sqlite")
-        db = os.path.join(db_dir,db + ".db")
+        db = os.path.join(db_dir, db + ".db")
         schema = Schema(get_schema(db))
         g_sql = get_sql(schema, g_str)
         hardness = evaluator.eval_hardness(g_sql)
@@ -523,16 +524,16 @@ def evaluate(gold, predict, db_dir, etype, kmaps,query_path,time_cost):
 
         if etype in ["all", "exec"]:
             result = eval_exec_match(db, p_str, g_str, p_sql, g_sql)
-            #exec_score = eval_exec_match(db, p_str, g_str, p_sql, g_sql)
+            # exec_score = eval_exec_match(db, p_str, g_str, p_sql, g_sql)
             if not result["equal"]:
-                element={}
-                element["query"]=questions[index]
-                element["gold_sql"]=g_str
-                element["pred_sql"]=p_str
+                element = {}
+                element["query"] = questions[index]
+                element["gold_sql"] = g_str
+                element["pred_sql"] = p_str
                 if "p_res_map" in result:
-                    element["p_res_map"]=result["p_res_map"]
+                    element["p_res_map"] = result["p_res_map"]
                 if "q_res_map" in result:
-                    element["q_res_map"]=result["q_res_map"]
+                    element["q_res_map"] = result["q_res_map"]
                 log_list.append(element)
             if result["equal"]:
                 scores[hardness]['exec'] += 1.0
@@ -542,8 +543,8 @@ def evaluate(gold, predict, db_dir, etype, kmaps,query_path,time_cost):
             exact_score = evaluator.eval_exact_match(p_sql, g_sql)
             partial_scores = evaluator.partial_scores
             if exact_score == 0:
-                print("{} pred: {}".format(hardness,p_str))
-                print("{} gold: {}".format(hardness,g_str))
+                print("{} pred: {}".format(hardness, p_str))
+                print("{} gold: {}".format(hardness, g_str))
                 print("")
             scores[hardness]['exact'] += exact_score
             scores['all']['exact'] += exact_score
@@ -570,7 +571,7 @@ def evaluate(gold, predict, db_dir, etype, kmaps,query_path,time_cost):
                 'exact': exact_score,
                 'partial': partial_scores
             })
-        index=index+1
+        index = index + 1
 
     for level in levels:
         if scores[level]['count'] == 0:
@@ -596,40 +597,41 @@ def evaluate(gold, predict, db_dir, etype, kmaps,query_path,time_cost):
                 else:
                     scores[level]['partial'][type_]['f1'] = \
                         2.0 * scores[level]['partial'][type_]['acc'] * scores[level]['partial'][type_]['rec'] / (
-                        scores[level]['partial'][type_]['rec'] + scores[level]['partial'][type_]['acc'])
+                                scores[level]['partial'][type_]['rec'] + scores[level]['partial'][type_]['acc'])
     cost_dic = {}
     cost_dic["max_time"] = max(time_cost)
     cost_dic["min_time"] = min(time_cost)
-    cost_dic["avg_time"] = sum(time_cost)/len(time_cost)
+    cost_dic["avg_time"] = sum(time_cost) / len(time_cost)
     log_list.append(cost_dic)
     print_scores(scores, etype)
     print(scores['all']['exec'])
     current_directory = os.path.dirname(os.path.abspath(__file__))
-    file_name=current_directory+"/error_case.json"
-    json_exist=os.path.exists(file_name)
+    file_name = current_directory + "/error_case.json"
+    json_exist = os.path.exists(file_name)
     if json_exist:
         os.remove(file_name)
     with open(file_name, 'w') as json_file:
         json.dump(log_list, json_file, indent=4, ensure_ascii=False)
+
 
 def eval_exec_match(db, p_str, g_str, pred, gold):
     """
     return 1 if the values between prediction and gold are matching
     in the corresponding index. Currently not support multiple col_unit(pairs).
     """
-    result={}
+    result = {}
     conn = sqlite3.connect(db)
     cursor = conn.cursor()
     try:
         cursor.execute(p_str)
         columns_tuple = cursor.description
         p_fields = [field_tuple[0] for field_tuple in columns_tuple]
-        for index in range(0,len(p_fields)):
-            p_fields[index]=re.sub("t\d+.", "",p_fields[index].replace("`","").lower())
+        for index in range(0, len(p_fields)):
+            p_fields[index] = re.sub("t\d+.", "", p_fields[index].replace("`", "").lower())
         p_res = cursor.fetchall()
     except Exception as e:
         logging.info(e)
-        result["equal"]=False
+        result["equal"] = False
         return result
 
     cursor.execute(g_str)
@@ -637,24 +639,25 @@ def eval_exec_match(db, p_str, g_str, pred, gold):
 
     def res_map(res, p_fields):
         rmap = {}
-        for i in range(0,len(p_fields)):
+        for i in range(0, len(p_fields)):
             if p_fields[i] != "sys_imp_date":
-               value_list= [r[i] for r in res]
-               value_list.sort()
-               rmap[p_fields[i]] =value_list
+                value_list = [r[i] for r in res]
+                value_list.sort()
+                rmap[p_fields[i]] = value_list
         return rmap
 
     g_fields = parse_sql(g_str)
 
-    p_res_map=res_map(p_res, p_fields)
-    q_res_map=res_map(q_res, g_fields)
+    p_res_map = res_map(p_res, p_fields)
+    q_res_map = res_map(q_res, g_fields)
     # print("p_res_map:{}".format(p_res_map))
     # print("q_res_map:{}".format(q_res_map))
-    result["equal"]=(p_res_map==q_res_map)
-    result["p_res_map"]=json.dumps(p_res_map, ensure_ascii=False)
-    result["q_res_map"]=json.dumps(q_res_map, ensure_ascii=False)
+    result["equal"] = (p_res_map == q_res_map)
+    result["p_res_map"] = json.dumps(p_res_map, ensure_ascii=False)
+    result["q_res_map"] = json.dumps(q_res_map, ensure_ascii=False)
     return result
-    #return res_map(p_res, p_fields) == res_map(q_res, g_fields)
+    # return res_map(p_res, p_fields) == res_map(q_res, g_fields)
+
 
 def parse_sql(sql):
     # 使用 sqlparse 库解析 SQL 查询语句
@@ -683,9 +686,10 @@ def parse_select(parsed):
                               .replace("T1.", "").replace("T2.", "")
                               .replace("T3.", "").replace("T4.", "")
                               .replace("T5.", "").replace("T6.", ""))
-        if(len(fields)):
+        if (len(fields)):
             break
     return fields
+
 
 # Rebuild SQL functions for value evaluation
 def rebuild_cond_unit_val(cond_unit):
@@ -735,7 +739,7 @@ def rebuild_sql_val(sql):
 def build_valid_col_units(table_units, schema):
     col_ids = [table_unit[1] for table_unit in table_units if table_unit[0] == TABLE_TYPE['table_unit']]
     prefixs = [col_id[:-2] for col_id in col_ids]
-    valid_col_units= []
+    valid_col_units = []
     for value in schema.idMap.values():
         if '.' in value and value[:value.index('.')] in prefixs:
             valid_col_units.append(value)
@@ -807,7 +811,8 @@ def rebuild_from_col(valid_col_units, from_, kmap):
     if from_ is None:
         return from_
 
-    from_['table_units'] = [rebuild_table_unit_col(valid_col_units, table_unit, kmap) for table_unit in from_['table_units']]
+    from_['table_units'] = [rebuild_table_unit_col(valid_col_units, table_unit, kmap) for table_unit in
+                            from_['table_units']]
     from_['conds'] = rebuild_condition_col(valid_col_units, from_['conds'], kmap)
     return from_
 
@@ -893,46 +898,47 @@ def build_foreign_key_map_from_json(table):
         tables[entry['db_id']] = build_foreign_key_map(entry)
     return tables
 
+
 def get_evaluation_result(time_cost):
     current_directory = os.path.dirname(os.path.abspath(__file__))
-    config_file=current_directory+"/config/config.yaml"
+    config_file = current_directory + "/config/config.yaml"
     with open(config_file, 'r') as file:
         config = yaml.safe_load(file)
-    db_dir=current_directory+"/data"
-    db_path=current_directory+"/data/"
-    db_file=db_path+"internet.db"
-    pred = current_directory+"/data/"+"pred_example_dusql.txt"
-    gold = current_directory+"/data/"+"gold_example_dusql.txt"
-    table= current_directory+"/data/"+"tables_dusql.json"
-    query_path=current_directory+"/data/"+"internet.txt"
-    etype="exec"
+    db_dir = current_directory + "/data"
+    db_path = current_directory + "/data/"
+    db_file = db_path + "tvshow.db"
+    pred = current_directory + "/data/" + "pred_example_tvshow.txt"
+    gold = current_directory + "/data/" + "gold_example_tvshow.txt"
+    table = current_directory + "/data/" + "tables_tvshow.json"
+    query_path = current_directory + "/data/" + "tvshow.txt"
+    etype = "exec"
     kmaps = build_foreign_key_map_from_json(table)
 
-    evaluate(gold, pred, db_dir, etype, kmaps,query_path,time_cost)
+    evaluate(gold, pred, db_dir, etype, kmaps, query_path, time_cost)
+
 
 def remove_unused_file():
     current_directory = os.path.dirname(os.path.abspath(__file__))
-    config_file=current_directory+"/config/config.yaml"
+    config_file = current_directory + "/config/config.yaml"
     with open(config_file, 'r') as file:
         config = yaml.safe_load(file)
-    db_path=current_directory+"/data/"
-    db_file=db_path+"internet.db"
-    pred_file = current_directory+"/data/"+"pred_example_dusql.txt"
+    db_path = current_directory + "/data/"
+    db_file = db_path + "internet.db"
+    pred_file = current_directory + "/data/" + "pred_example_dusql.txt"
 
-    db_exist=os.path.exists(db_file)
+    db_exist = os.path.exists(db_file)
     if db_exist:
         os.remove(db_file)
         print("db_file removed!")
-    pred_exist=os.path.exists(pred_file)
+    pred_exist = os.path.exists(pred_file)
     if pred_exist:
         os.remove(pred_file)
         print("pred_file removed!")
 
+
 if __name__ == "__main__":
-    build_table()
-    time_cost=get_pred_result()
+    # build_table()
+    time_cost = get_pred_result()
+    # time_cost = [1000]
     get_evaluation_result(time_cost)
     remove_unused_file()
-
-
-

@@ -1,1 +1,13 @@
-url: http://localhost:9080
+url: "http://localhost:9080"
+
+dusql:
+  db_dir: "data"
+  db_file: "internet.db"
+  gold_file: "data/spider_tvshow.json"
+  table_file: "data/tables_dusql.json"
+  
+tvshow:
+  db_dir: "data"
+  db_file: "tvshow.db"
+  gold_file: "data/gold_example_tvshow.txt"
+  table_file: "data/tables_tvshow.json"

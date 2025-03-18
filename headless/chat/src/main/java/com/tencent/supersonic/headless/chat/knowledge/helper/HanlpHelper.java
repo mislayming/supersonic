@@ -8,15 +8,9 @@ import com.hankcs.hanlp.dictionary.DynamicCustomDictionary;
 import com.hankcs.hanlp.seg.Segment;
 import com.hankcs.hanlp.seg.common.Term;
 import com.tencent.supersonic.common.pojo.enums.DictWordType;
+import com.tencent.supersonic.common.util.ContextUtils;
 import com.tencent.supersonic.headless.api.pojo.response.S2Term;
-import com.tencent.supersonic.headless.chat.knowledge.DatabaseMapResult;
-import com.tencent.supersonic.headless.chat.knowledge.DictWord;
-import com.tencent.supersonic.headless.chat.knowledge.EmbeddingResult;
-import com.tencent.supersonic.headless.chat.knowledge.HadoopFileIOAdapter;
-import com.tencent.supersonic.headless.chat.knowledge.HanlpMapResult;
-import com.tencent.supersonic.headless.chat.knowledge.MapResult;
-import com.tencent.supersonic.headless.chat.knowledge.MultiCustomDictionary;
-import com.tencent.supersonic.headless.chat.knowledge.SearchService;
+import com.tencent.supersonic.headless.chat.knowledge.*;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.BeanUtils;
@@ -26,13 +20,7 @@ import org.springframework.util.ResourceUtils;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /** HanLP helper */
@@ -57,7 +45,14 @@ public class HanlpHelper {
         if (segment == null) {
             synchronized (HanlpHelper.class) {
                 if (segment == null) {
-                    segment = HanLP.newSegment().enableIndexMode(true).enableIndexMode(4)
+                    Segment newSegment = null;
+                    HanLPSegmentProvider hanLPSegmentProvider = ContextUtils.getBeansOfType(HanLPSegmentProvider.class).values().stream().findFirst().orElse(null);
+                    if (hanLPSegmentProvider != null) {
+                        newSegment = hanLPSegmentProvider.getSegment();
+                    } else {
+                        newSegment = HanLP.newSegment();
+                    }
+                    segment = newSegment.enableIndexMode(true).enableIndexMode(4)
                             .enableCustomDictionary(true).enableCustomDictionaryForcing(true)
                             .enableOffset(true).enableJapaneseNameRecognize(false)
                             .enableNameRecognize(false).enableAllNamedEntityRecognize(false)
@@ -116,6 +111,9 @@ public class HanlpHelper {
             return;
         }
         String hanlpPropertiesPath = getHanlpPropertiesPath();
+        if (hanlpPropertiesPath == null) {
+            return;
+        }
 
         HanLP.Config.CustomDictionaryPath = Arrays.stream(HanLP.Config.CustomDictionaryPath)
                 .map(path -> hanlpPropertiesPath + FILE_SPILT + path).toArray(String[]::new);
@@ -181,8 +179,13 @@ public class HanlpHelper {
                 hanlpPropertiesPath + FILE_SPILT + HanLP.Config.PerceptronNERModelPath;
     }
 
+    // TODO jar包中的hanlp.properties永远获取不到。
     public static String getHanlpPropertiesPath() throws FileNotFoundException {
-        return ResourceUtils.getFile("classpath:hanlp.properties").getParent();
+        try {
+            return ResourceUtils.getFile("classpath:hanlp.properties").getParent();
+        } catch (FileNotFoundException e) {
+        }
+        return null;
     }
 
     public static boolean addToCustomDictionary(DictWord dictWord) {
@@ -244,7 +247,7 @@ public class HanlpHelper {
     }
 
     public static <T extends MapResult> boolean addLetterOriginal(List<T> mapResults, T mapResult,
-            CoreDictionary.Attribute attribute) {
+                                                                  CoreDictionary.Attribute attribute) {
         if (attribute == null) {
             return false;
         }
@@ -319,7 +322,7 @@ public class HanlpHelper {
     }
 
     public static List<S2Term> transform2ApiTerm(Term term,
-            Map<Long, List<Long>> modelIdToDataSetIds) {
+                                                 Map<Long, List<Long>> modelIdToDataSetIds) {
         List<S2Term> s2Terms = Lists.newArrayList();
         List<String> natures = NatureHelper.changeModel2DataSet(String.valueOf(term.getNature()),
                 modelIdToDataSetIds);

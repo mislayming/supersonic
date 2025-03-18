@@ -68,9 +68,9 @@ public class DimensionServiceImpl extends ServiceImpl<DimensionDOMapper, Dimensi
     private ApplicationEventPublisher eventPublisher;
 
     public DimensionServiceImpl(DimensionRepository dimensionRepository, ModelService modelService,
-            AliasGenerateHelper aliasGenerateHelper, DatabaseService databaseService,
-            ModelRelaService modelRelaService, DataSetService dataSetService,
-            TagMetaService tagMetaService) {
+                                AliasGenerateHelper aliasGenerateHelper, DatabaseService databaseService,
+                                ModelRelaService modelRelaService, DataSetService dataSetService,
+                                TagMetaService tagMetaService) {
         this.modelService = modelService;
         this.dimensionRepository = dimensionRepository;
         this.aliasGenerateHelper = aliasGenerateHelper;
@@ -267,7 +267,7 @@ public class DimensionServiceImpl extends ServiceImpl<DimensionDOMapper, Dimensi
     }
 
     private List<DimensionResp> filterByField(List<DimensionResp> dimensionResps,
-            List<String> fields) {
+                                              List<String> fields) {
         List<DimensionResp> dimensionFiltered = Lists.newArrayList();
         for (DimensionResp dimensionResp : dimensionResps) {
             for (String field : fields) {
@@ -302,7 +302,7 @@ public class DimensionServiceImpl extends ServiceImpl<DimensionDOMapper, Dimensi
         List<DimensionResp> dimensionResps = Lists.newArrayList();
         if (!CollectionUtils.isEmpty(dimensionDOS)) {
             dimensionResps = dimensionDOS.stream().map(
-                    dimensionDO -> DimensionConverter.convert2DimensionResp(dimensionDO, modelMap))
+                            dimensionDO -> DimensionConverter.convert2DimensionResp(dimensionDO, modelMap))
                     .collect(Collectors.toList());
         }
         return dimensionResps;
@@ -468,10 +468,12 @@ public class DimensionServiceImpl extends ServiceImpl<DimensionDOMapper, Dimensi
     }
 
     private boolean isChange(DimensionReq dimensionReq, DimensionResp dimensionResp) {
+        // name change 需要同步。
+        boolean isNameChange = !dimensionReq.getName().equals(dimensionResp.getName());
         boolean isExtChange = !new EqualsBuilder()
                 .append(dimensionReq.getExt(), dimensionResp.getExt()).isEquals();
         boolean isTypeParamChange =
                 !Objects.equals(dimensionReq.getTypeParams(), dimensionResp.getTypeParams());
-        return isExtChange || isTypeParamChange;
+        return isNameChange || isExtChange || isTypeParamChange;
     }
 }

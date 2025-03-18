@@ -68,7 +68,8 @@ public class ModelConverter {
     }
 
     public static ModelDO convert(ModelDO modelDO, ModelReq modelReq, User user) {
-        ModelDetail modelDetail = updateModelDetail(modelReq);
+//        ModelDetail modelDetail = updateModelDetail(modelReq);
+        ModelDetail modelDetail = modelReq.getModelDetail();
         BeanMapper.mapper(modelReq, modelDO);
         if (modelReq.getDrillDownDimensions() != null) {
             modelDO.setDrillDownDimensions(
@@ -282,19 +283,19 @@ public class ModelConverter {
         if (measures == null) {
             measures = Lists.newArrayList();
         }
-        for (Measure measure : measures) {
-            if (StringUtils.isBlank(measure.getBizName())) {
-                continue;
-            }
-            // Compatible with front-end tmp
-
-            String oriFieldName =
-                    measure.getBizName().replaceFirst(modelReq.getBizName() + "_", "");
-            measure.setExpr(oriFieldName);
-            if (!measure.getBizName().startsWith(modelReq.getBizName())) {
-                measure.setBizName(String.format("%s_%s", modelReq.getBizName(), oriFieldName));
-            }
-        }
+//        for (Measure measure : measures) {
+//            if (StringUtils.isBlank(measure.getBizName())) {
+//                continue;
+//            }
+//            // Compatible with front-end tmp
+//
+//            String oriFieldName =
+//                    measure.getBizName().replaceFirst(modelReq.getBizName() + "_", "");
+//            measure.setExpr(oriFieldName);
+//            if (!measure.getBizName().startsWith(modelReq.getBizName())) {
+//                measure.setBizName(String.format("%s_%s", modelReq.getBizName(), oriFieldName));
+//            }
+//        }
         BeanMapper.mapper(modelReq.getModelDetail(), modelDetail);
         return modelDetail;
     }

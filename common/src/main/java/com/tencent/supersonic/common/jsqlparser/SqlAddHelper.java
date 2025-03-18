@@ -13,9 +13,27 @@ import org.springframework.util.CollectionUtils;
 
 import java.util.*;
 
+/***
+ * 修复问题: SELECT 地区名称, SUM(销售额) AS 总销售额, 总销售额 FROM 销售数据 GROUP BY 地区名称 ORDER BY 总销售额 DESC LIMIT 1
+ * 总销售额与总销售额重复。待提PR.TODO
+ */
+
 /** Sql Parser add Helper */
 @Slf4j
 public class SqlAddHelper {
+
+    public static Set<String> getSelectFieldNames(PlainSelect plainSelect) {
+        Set<String> fieldNames = new HashSet<>();
+        List<SelectItem<?>> selectItems = plainSelect.getSelectItems();
+        for (SelectItem<?> selectItem : selectItems) {
+            if (selectItem.getAlias() != null) {
+                fieldNames.add(selectItem.getAlias().getName());
+            } else if (selectItem.getExpression() instanceof Column) {
+                fieldNames.add(((Column) selectItem.getExpression()).getColumnName());
+            }
+        }
+        return fieldNames;
+    }
 
     public static String addFieldsToSelect(String sql, List<String> fields) {
         Select selectStatement = SqlSelectHelper.getSelect(sql);
@@ -25,7 +43,8 @@ public class SqlAddHelper {
         }
         if (selectStatement instanceof PlainSelect) {
             PlainSelect plainSelect = (PlainSelect) selectStatement;
-            fields.stream().filter(Objects::nonNull).forEach(field -> {
+            Set<String> selectFieldNames = getSelectFieldNames(plainSelect);
+            fields.stream().filter(Objects::nonNull).filter(f -> !selectFieldNames.contains(f)).forEach(field -> {
                 SelectItem<Column> selectExpressionItem = new SelectItem(new Column(field));
                 plainSelect.addSelectItems(selectExpressionItem);
             });
@@ -35,7 +54,8 @@ public class SqlAddHelper {
             if (!CollectionUtils.isEmpty(setOperationList.getSelects())) {
                 setOperationList.getSelects().forEach(subSelectBody -> {
                     PlainSelect subPlainSelect = (PlainSelect) subSelectBody;
-                    fields.stream().forEach(field -> {
+                    Set<String> selectFieldNames = getSelectFieldNames(subPlainSelect);
+                    fields.stream().filter(f -> !selectFieldNames.contains(f)).forEach(field -> {
                         SelectItem<Column> selectExpressionItem = new SelectItem(new Column(field));
                         subPlainSelect.addSelectItems(selectExpressionItem);
                     });
@@ -207,7 +227,7 @@ public class SqlAddHelper {
     }
 
     private static void addAggregateToSelectItems(List<SelectItem<?>> selectItems,
-            Map<String, String> fieldNameToAggregate) {
+                                                  Map<String, String> fieldNameToAggregate) {
         for (SelectItem selectItem : selectItems) {
             Expression expression = selectItem.getExpression();
             Function function =
@@ -220,7 +240,7 @@ public class SqlAddHelper {
     }
 
     private static void addAggregateToOrderByItems(List<OrderByElement> orderByElements,
-            Map<String, String> fieldNameToAggregate) {
+                                                   Map<String, String> fieldNameToAggregate) {
         if (orderByElements == null) {
             return;
         }
@@ -236,7 +256,7 @@ public class SqlAddHelper {
     }
 
     private static void addAggregateToGroupByItems(GroupByElement groupByElement,
-            Map<String, String> fieldNameToAggregate) {
+                                                   Map<String, String> fieldNameToAggregate) {
         if (groupByElement == null) {
             return;
         }
@@ -252,7 +272,7 @@ public class SqlAddHelper {
     }
 
     private static void addAggregateToWhereItems(Expression whereExpression,
-            Map<String, String> fieldNameToAggregate) {
+                                                 Map<String, String> fieldNameToAggregate) {
         if (whereExpression == null) {
             return;
         }
@@ -260,7 +280,7 @@ public class SqlAddHelper {
     }
 
     private static void modifyWhereExpression(Expression whereExpression,
-            Map<String, String> fieldNameToAggregate) {
+                                              Map<String, String> fieldNameToAggregate) {
         if (SqlSelectHelper.isLogicExpression(whereExpression)) {
             if (whereExpression instanceof AndExpression) {
                 AndExpression andExpression = (AndExpression) whereExpression;
@@ -285,7 +305,7 @@ public class SqlAddHelper {
     }
 
     private static void setAggToFunction(Expression expression,
-            Map<String, String> fieldNameToAggregate) {
+                                         Map<String, String> fieldNameToAggregate) {
         if (!(expression instanceof ComparisonOperator)) {
             return;
         }

@@ -1,9 +1,10 @@
 package dev.langchain4j.inmemory.spring;
 
-import dev.langchain4j.model.embedding.AllMiniLmL6V2QuantizedEmbeddingModel;
-import dev.langchain4j.model.embedding.BgeSmallZhEmbeddingModel;
+
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.embedding.S2OnnxEmbeddingModel;
+import dev.langchain4j.model.embedding.onnx.allminilml6v2q.AllMiniLmL6V2QuantizedEmbeddingModel;
+import dev.langchain4j.model.embedding.onnx.bgesmallzhv15q.BgeSmallZhV15QuantizedEmbeddingModel;
 import dev.langchain4j.provider.EmbeddingModelConstant;
 import dev.langchain4j.store.embedding.EmbeddingStoreFactory;
 import org.apache.commons.lang3.StringUtils;
@@ -34,11 +35,11 @@ public class InMemoryAutoConfig {
         }
         String modelName = embeddingModelProperties.getModelName();
         if (EmbeddingModelConstant.BGE_SMALL_ZH.equalsIgnoreCase(modelName)) {
-            return new BgeSmallZhEmbeddingModel();
+            return new BgeSmallZhV15QuantizedEmbeddingModel();
         }
         if (EmbeddingModelConstant.ALL_MINILM_L6_V2.equalsIgnoreCase(modelName)) {
             return new AllMiniLmL6V2QuantizedEmbeddingModel();
         }
-        return new BgeSmallZhEmbeddingModel();
+        return new BgeSmallZhV15QuantizedEmbeddingModel();
     }
 }

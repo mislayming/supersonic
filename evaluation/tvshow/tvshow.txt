@@ -1,0 +1,56 @@
+find the id of tv channels that do not play any cartoon directed by Ben Jones.
+Find the number of cartoons directed by each of the listed directors.
+Find the package choice and series name of the TV channel that has high definition TV.
+find the package option of the tv channel that do not have any cartoon directed by Ben Jones.
+find the pixel aspect ratio and nation of the tv channels that do not use English.
+Find the production code and channel of the most recently aired cartoon .
+List each language and the number of TV Channels using it.
+Find the number of cartoons directed by each of the listed directors.
+How many cartoons were written by "Joseph Kuhr"?
+List the number of different series names and contents in the TV Channel table.
+How many TV Channel using language English?
+How many TV Channel using language English?
+List all cartoon directed by "Ben Jones".
+list all cartoon titles and their directors ordered by their air date
+List each language and the number of TV Channels using it.
+List the Episode of all  TV series showed on TV Channel with series name "Sky Radio".
+List the Episode of all TV series sorted by rating.
+List the language used least number of TV Channel. List language and number of TV Channel.
+List the number of different series names and contents in the TV Channel table.
+List the title of all  Cartoons showed on TV Channel with series name "Sky Radio".
+List the title of all cartoon directed by "Ben Jones" or "Brandon Vietti".
+List the title of all cartoons in alphabetical order.
+List top 3 highest Rating  TV series. List the TV series's Episode and Rating.
+List top 3 highest Rating  TV series. List the TV series's Episode and Rating.
+List the Episode of all TV series sorted by rating.
+which countries' tv channels are playing some cartoon written by Todd Casey?
+find id of the tv channels that from the countries where have more than two tv channels.
+find the id of tv channels that do not play any cartoon directed by Ben Jones.
+List the language used least number of TV Channel. List language and number of TV Channel.
+List all cartoon directed by "Ben Jones".
+Find the package choice and series name of the TV channel that has high definition TV.
+find the package option of the tv channel that do not have any cartoon directed by Ben Jones.
+What is the Package Option of TV Channel with serial name "Sky Radio"?
+List the title of all cartoon directed by "Ben Jones" or "Brandon Vietti".
+List the title of all cartoons in alphabetical order.
+What is minimum and maximum share of TV series?
+What is the air date of TV series with Episode "A Love of a Lifetime"?
+What is the content of TV Channel with serial name "Sky Radio"?
+What is the content of TV Channel with serial name "Sky Radio"?
+Which country has the most of TV Channels? List the country and number of TV Channels it has.
+List the Episode of all  TV series showed on TV Channel with series name "Sky Radio".
+What is minimum and maximum share of TV series?
+list all cartoon titles and their directors ordered by their air date
+How many cartoons were written by "Joseph Kuhr"?
+What is the Package Option of TV Channel with serial name "Sky Radio"?
+find the pixel aspect ratio and nation of the tv channels that do not use English.
+Find the production code and channel of the most recently aired cartoon .
+What is the TV Channel that shows the cartoon "The Rise of the Blue Beetle!"? List the TV Channel's series name.
+List the title of all  Cartoons showed on TV Channel with series name "Sky Radio".
+What is the TV Channel of TV series with Episode "A Love of a Lifetime"? List the TV Channel's series name.
+What is the TV Channel that shows the cartoon "The Rise of the Blue Beetle!"? List the TV Channel's series name.
+What is Weekly Rank of TV series with Episode "A Love of a Lifetime"?
+What is Weekly Rank of TV series with Episode "A Love of a Lifetime"?
+What is the air date of TV series with Episode "A Love of a Lifetime"?
+which countries' tv channels are playing some cartoon written by Todd Casey?
+Which country has the most of TV Channels? List the country and number of TV Channels it has.

@@ -1,5 +1,8 @@
 package dev.langchain4j.model.embedding;
 
+import dev.langchain4j.model.embedding.onnx.AbstractInProcessEmbeddingModel;
+import dev.langchain4j.model.embedding.onnx.OnnxBertBiEncoder;
+import dev.langchain4j.model.embedding.onnx.PoolingMode;
 import org.apache.commons.lang3.StringUtils;
 
 import java.io.IOException;
@@ -25,6 +28,7 @@ public class S2OnnxEmbeddingModel extends AbstractInProcessEmbeddingModel {
     private static volatile String cachedVocabularyPath;
 
     public S2OnnxEmbeddingModel(String pathToModel, String vocabularyPath) {
+        super(null);
         if (shouldReloadModel(pathToModel, vocabularyPath)) {
             synchronized (S2OnnxEmbeddingModel.class) {
                 if (shouldReloadModel(pathToModel, vocabularyPath)) {
@@ -61,7 +65,7 @@ public class S2OnnxEmbeddingModel extends AbstractInProcessEmbeddingModel {
 
     static OnnxBertBiEncoder loadFromFileSystem(Path pathToModel, URL vocabularyFile) {
         try {
-            return new OnnxBertBiEncoder(Files.newInputStream(pathToModel), vocabularyFile,
+            return new OnnxBertBiEncoder(Files.newInputStream(pathToModel),  vocabularyFile.openStream(),
                     PoolingMode.MEAN);
         } catch (IOException e) {
             throw new RuntimeException(e);

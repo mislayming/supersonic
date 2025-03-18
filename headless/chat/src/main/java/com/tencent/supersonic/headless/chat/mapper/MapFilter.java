@@ -7,12 +7,7 @@ import com.tencent.supersonic.headless.chat.ChatQueryContext;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.util.CollectionUtils;
 
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
@@ -21,7 +16,7 @@ public class MapFilter {
     public static void filter(ChatQueryContext chatQueryContext) {
         filterByDataSetId(chatQueryContext);
         filterByDetectWordLenLessThanOne(chatQueryContext);
-        twoCharactersMustEqual(chatQueryContext);
+//        twoCharactersMustEqual(chatQueryContext); TODO
         switch (chatQueryContext.getRequest().getQueryDataType()) {
             case TAG:
                 filterByQueryDataType(chatQueryContext, element -> !(element.getIsTag() > 0));
@@ -65,8 +60,9 @@ public class MapFilter {
         for (Map.Entry<Long, List<SchemaElementMatch>> entry : dataSetElementMatches.entrySet()) {
             List<SchemaElementMatch> value = entry.getValue();
             if (!CollectionUtils.isEmpty(value)) {
-                value.removeIf(schemaElementMatch -> StringUtils
-                        .length(schemaElementMatch.getDetectWord()) <= 1);
+                // TODO 确认影响
+//                value.removeIf(schemaElementMatch -> StringUtils
+//                        .length(schemaElementMatch.getDetectWord()) <= 1 && !schemaElementMatch.isLlmMatched());
             }
         }
     }
@@ -85,7 +81,7 @@ public class MapFilter {
     }
 
     public static void filterByQueryDataType(ChatQueryContext chatQueryContext,
-            Predicate<SchemaElement> needRemovePredicate) {
+                                             Predicate<SchemaElement> needRemovePredicate) {
         Map<Long, List<SchemaElementMatch>> dataSetElementMatches =
                 chatQueryContext.getMapInfo().getDataSetElementMatches();
         for (Map.Entry<Long, List<SchemaElementMatch>> entry : dataSetElementMatches.entrySet()) {
@@ -107,7 +103,7 @@ public class MapFilter {
                 chatQueryContext.getMapInfo().getDataSetElementMatches();
 
         for (Map.Entry<Long, List<SchemaElementMatch>> entry : dataSetElementMatches.entrySet()) {
-            filterByExactMatch(entry.getValue());
+//            filterByExactMatch(entry.getValue()); TODO 目前看到没什么用，不同的模型存在相同的匹配词，只会返回第一个，影响匹配模型的评分。
             filterInExactMatch(entry.getValue());
         }
     }

@@ -8,6 +8,7 @@ import com.tencent.supersonic.chat.server.service.ChatManageService;
 import com.tencent.supersonic.chat.server.service.ChatQueryService;
 import com.tencent.supersonic.chat.server.service.PluginService;
 import com.tencent.supersonic.common.config.ChatModel;
+import com.tencent.supersonic.common.pojo.ChatModelConfig;
 import com.tencent.supersonic.common.pojo.User;
 import com.tencent.supersonic.common.pojo.enums.StatusEnum;
 import com.tencent.supersonic.common.pojo.enums.TypeEnums;
@@ -134,22 +135,49 @@ public abstract class S2BaseDemo implements CommandLineRunner {
         if (!chatModels.isEmpty()) {
             return chatModels.get(0);
         } else {
-            ChatModel chatModel = new ChatModel();
-            chatModel.setName("OpenAI模型DEMO");
-            chatModel.setDescription("由langchain4j社区提供仅用于体验(单次请求最大token数1000), 正式使用请切换大模型");
-            chatModel.setConfig(ModelProvider.DEMO_CHAT_MODEL);
-            if (StringUtils.isNotBlank(environment.getProperty("OPENAI_BASE_URL"))) {
-                chatModel.getConfig().setBaseUrl(environment.getProperty("OPENAI_BASE_URL"));
-            }
-            if (StringUtils.isNotBlank(environment.getProperty("OPENAI_API_KEY"))) {
-                chatModel.getConfig().setApiKey(environment.getProperty("OPENAI_API_KEY"));
-            }
-            if (StringUtils.isNotBlank(environment.getProperty("OPENAI_MODEL_NAME"))) {
-                chatModel.getConfig().setModelName(environment.getProperty("OPENAI_MODEL_NAME"));
-            }
-            chatModel = chatModelService.createChatModel(chatModel, defaultUser);
-            return chatModel;
+
+            return createQWenChatModel();
+//            return createKIMIChatModel();
         }
+    }
+
+    private ChatModel createGPTModel() {
+        ChatModel chatModel = new ChatModel();
+        chatModel.setName("OpenAI模型DEMO");
+        chatModel.setDescription("由langchain4j社区提供仅用于体验(单次请求最大token数1000), 正式使用请切换大模型");
+        chatModel.setConfig(ModelProvider.DEMO_CHAT_MODEL);
+        if (StringUtils.isNotBlank(environment.getProperty("OPENAI_BASE_URL"))) {
+            chatModel.getConfig().setBaseUrl(environment.getProperty("OPENAI_BASE_URL"));
+        }
+        if (StringUtils.isNotBlank(environment.getProperty("OPENAI_API_KEY"))) {
+            chatModel.getConfig().setApiKey(environment.getProperty("OPENAI_API_KEY"));
+        }
+        if (StringUtils.isNotBlank(environment.getProperty("OPENAI_MODEL_NAME"))) {
+            chatModel.getConfig().setModelName(environment.getProperty("OPENAI_MODEL_NAME"));
+        }
+        return chatModel = chatModelService.createChatModel(chatModel, defaultUser);
+    }
+
+    private ChatModel createKIMIChatModel() {
+        ChatModel chatModel = new ChatModel();
+        chatModel.setName("kimiChat");
+        chatModel.setDescription("kimi demo");
+
+        ChatModelConfig config = ChatModelConfig.builder().provider("OPEN_AI").baseUrl("https://api.moonshot.cn/v1")
+                .apiKey("sk-BGIb43D9i2rrn3aa69SkkE9KOG02SX0vWQL3AbbsOg1T5hQT").modelName("moonshot-v1-8k").temperature(0.0).timeOut(60L).build();
+        chatModel.setConfig(config);
+        return chatModelService.createChatModel(chatModel, defaultUser);
+    }
+
+    private ChatModel createQWenChatModel() {
+        ChatModel chatModel = new ChatModel();
+        chatModel.setName("qwen2.5-turbo");
+        chatModel.setDescription("qwen2.5-turbo");
+
+        ChatModelConfig config = ChatModelConfig.builder().provider("OPEN_AI").baseUrl("https://dashscope.aliyuncs.com/compatible-mode/v1")
+                .apiKey("sk-dcd252aab98742d1945b4e88c78c7ce4").modelName("qwen-plus").temperature(0.0).timeOut(60L).build();
+        chatModel.setConfig(config);
+        return chatModelService.createChatModel(chatModel, defaultUser);
     }
 
     protected MetricResp getMetric(String bizName, ModelResp model) {
