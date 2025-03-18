@@ -91,32 +91,32 @@ public class SqlBuilder2 {
         // 收集所有数据模型的TableView
         Map<String, TableView> tableViewMap = new HashMap<>();
         for (DataModel dataModel : dataModels) {
-            final Set<DimSchemaResp> queryDimensions = new HashSet<>();
-            final Set<MetricSchemaResp> queryMetrics = new HashSet<>();
+            final Set<Dimension> queryDimensions = new HashSet<>();
+
 
             // 从ontology获取该模型下的所有维度和指标
             Ontology ontology = schema.getOntology();
             List<Dimension> allDimensions = ontology.getDimensionMap().getOrDefault(dataModel.getName(), Collections.emptyList());
-            List<Metric> allMetrics = ontology.getMetrics();
+
 
             // 查找维度和指标（保持原有逻辑）
             for (Dimension dim : allDimensions) {
                 if (ontologyQuery.getDimensions().contains(dim.getName()) || 
                     ontologyQuery.getDimensions().contains(dim.getBizName())) {
-                    DimSchemaResp dimResp = new DimSchemaResp();
-                    dimResp.setName(dim.getName());
-                    queryDimensions.add(dimResp);
+                    queryDimensions.add(dim);
                 }
             }
 
+            // TODO 最新版本，其实这里都重构过了，过来的对象实际上不知道属于哪个 model 的，我这里简单做了一个 filter, 重名或者 expr 都歇逼
+            List<Metric> allMetrics = ontology.getMetrics().stream().filter(metric -> dataModel.getMeasures().stream().anyMatch(measure -> metric.getName().equals(measure.getName()))).toList();
+            final Set<Metric> queryMetrics = new HashSet<>(allMetrics);
+            /*
             for (Metric metric : allMetrics) {
-                if (metric.getName().equals(dataModel.getName()) &&
-                    ontologyQuery.getMetrics().contains(metric.getName())) {
-                    MetricSchemaResp metricResp = new MetricSchemaResp();
-                    metricResp.setName(metric.getName());
-                    queryMetrics.add(metricResp);
+                if (ontologyQuery.getMetrics().contains(metric.getName())) {
+                    queryMetrics.add(metric);
                 }
             }
+            */
 
             List<String> primary = new ArrayList<>();
             for (Identify identify : dataModel.getIdentifiers()) {
@@ -571,17 +571,19 @@ public class SqlBuilder2 {
         return SemanticNode.getTable(tableView.getTable());
     }
 
-    public static TableView renderOne(Set<MetricSchemaResp> queryMetrics,
-                                      Set<DimSchemaResp> queryDimensions, DataModel dataModel, SqlValidatorScope scope,
+    public static TableView renderOne(Set<Metric> queryMetrics,
+                                      Set<Dimension> queryDimensions, DataModel dataModel, SqlValidatorScope scope,
                                       S2CalciteSchema schema) {
         TableView tableView = new TableView();
         EngineType engineType = EngineType.fromString(schema.getOntology().getDatabase().getType());
         Set<String> queryFields = tableView.getFields();
         if (Objects.nonNull(queryMetrics)) {
-            queryMetrics.stream().forEach(m -> queryFields.addAll(m.getFields()));
+            // TODO Metric也是如此，bizname 呢？
+            queryMetrics.stream().forEach(m -> queryFields.add(m.getName()));
         }
         if (Objects.nonNull(queryDimensions)) {
-            queryDimensions.stream().forEach(d -> queryFields.addAll(d.getFields()));
+            // TODO 这里就奇怪！！， exp 还是 bizname，还是 name
+            queryDimensions.stream().forEach(d -> queryFields.add(d.getExpr()));
         }
 
         try {
