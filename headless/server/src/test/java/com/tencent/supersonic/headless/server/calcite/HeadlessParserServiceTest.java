@@ -34,7 +34,7 @@ class HeadlessParserServiceTest {
             String sql = aggBuilder.buildOntologySql(queryStatement);
             queryStatement.setSql(sql);
             EngineType engineType = semanticSchema.getOntology().getDatabaseType();
-            sqlParser.setSql(aggBuilder.getSql(engineType));
+            //sqlParser.setSql(aggBuilder.getSql(engineType));
         } catch (Exception e) {
             sqlParser.setErrMsg(e.getMessage());
             log.error("parser error metricQueryReq[{}] error [{}]", ontologyQuery, e);

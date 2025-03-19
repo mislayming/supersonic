@@ -9,6 +9,8 @@ import com.tencent.supersonic.headless.chat.query.llm.s2sql.LLMResp;
 import com.tencent.supersonic.headless.chat.query.llm.s2sql.LLMSqlResp;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections.MapUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -21,6 +23,8 @@ import java.util.Objects;
  */
 @Slf4j
 public class LLMSqlParser implements SemanticParser {
+
+    private static final Logger keyPipelineLog = LoggerFactory.getLogger("keyPipeline");
 
     @Override
     public void parse(ChatQueryContext queryCtx) {
@@ -35,7 +39,6 @@ public class LLMSqlParser implements SemanticParser {
             if (dataSetId == null) {
                 return;
             }
-            log.info("try generating query statement for dataSetId:{}", dataSetId);
 
             // 3.invoke LLM service to do parsing.
             tryParse(queryCtx, dataSetId);
@@ -61,6 +64,7 @@ public class LLMSqlParser implements SemanticParser {
                 if (Objects.nonNull(llmResp)) {
                     // deduplicate the S2SQL result list and build parserInfo
                     sqlRespMap = responseService.getDeduplicationSqlResp(currentRetry, llmResp);
+                    keyPipelineLog.info("\t\t llm-query:{}", llmResp.getSqlOutput());
                     if (MapUtils.isNotEmpty(sqlRespMap)) {
                         parseResult = ParseResult.builder().dataSetId(dataSetId).llmReq(llmReq)
                                 .llmResp(llmResp).build();

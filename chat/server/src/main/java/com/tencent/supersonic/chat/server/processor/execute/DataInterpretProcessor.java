@@ -64,8 +64,8 @@ public class DataInterpretProcessor implements ExecuteResultProcessor {
                 ModelProvider.getChatModel(chatApp.getChatModelConfig());
         Response<AiMessage> response = chatLanguageModel.generate(prompt.toUserMessage());
         String anwser = response.content().text();
-        keyPipelineLog.info("DataInterpretProcessor modelReq:\n{} \nmodelResp:\n{}", prompt.text(),
-                anwser);
+//        keyPipelineLog.info("DataInterpretProcessor modelReq:\n{} \nmodelResp:\n{}", prompt.text(),
+//                anwser);
         if (StringUtils.isNotBlank(anwser)) {
             queryResult.setTextSummary(anwser);
         }

@@ -100,7 +100,7 @@
         </rollingPolicy>
         <encoder>
             <charset>UTF-8</charset>
-            <pattern>%d [%thread] %-5level [%X{traceId}] %logger{36} %line - %msg%n</pattern>
+            <pattern>%d - %msg%n</pattern>
         </encoder>
         <filter class="ch.qos.logback.classic.filter.LevelFilter">
             <!-- 过滤的级别 -->
@@ -110,6 +110,7 @@
     <!--keyPipeline相关日志-->
     <logger name="keyPipeline" level="info" additivity="false">
         <appender-ref ref="keyPipelineAppender"/>
+        <appender-ref ref="consoleLog"/>
     </logger>
 
     <root level="INFO">

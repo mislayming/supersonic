@@ -35,12 +35,12 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 @Slf4j
-public class SqlBuilder {
+public class SqlBuilder3 {
 
     private final S2CalciteSchema schema;
     private SqlValidatorScope scope;
 
-    public SqlBuilder(S2CalciteSchema schema) {
+    public SqlBuilder3(S2CalciteSchema schema) {
         this.schema = schema;
     }
 

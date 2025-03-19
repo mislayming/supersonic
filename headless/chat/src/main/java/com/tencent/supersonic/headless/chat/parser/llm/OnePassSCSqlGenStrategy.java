@@ -90,8 +90,13 @@ public class OnePassSCSqlGenStrategy extends SqlGenStrategy {
         prompt2Exemplar.keySet().parallelStream().forEach(prompt -> {
             SemanticSql s2Sql = extractor.generateSemanticSql(prompt.toUserMessage().singleText());
             output2Prompt.put(s2Sql.getSql(), prompt);
-            keyPipelineLog.info("OnePassSCSqlGenStrategy modelReq:\n{} \nmodelResp:\n{}",
-                    prompt.text(), s2Sql);
+            keyPipelineLog.info("""
+                    OnePassSCSqlGenStrategy - LLM \n
+                    prompt: {} \n
+                    thought:{}
+                    sql:{}
+                    """,
+                    prompt.text(), s2Sql.getThought(), s2Sql.getSql());
         });
 
         // 4.format response.

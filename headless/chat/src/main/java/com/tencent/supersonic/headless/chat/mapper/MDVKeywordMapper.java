@@ -15,6 +15,8 @@ import com.tencent.supersonic.headless.chat.utils.EditDistanceUtils;
 import dev.langchain4j.store.embedding.Retrieval;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.util.CollectionUtils;
 
 import java.util.*;
@@ -32,6 +34,7 @@ import java.util.stream.Collectors;
 @Slf4j
 public class MDVKeywordMapper extends BaseMapper {
 
+    private static final Logger keyPipelineLog = LoggerFactory.getLogger("keyPipeline");
     public static final Double HANLP_VALUE_THRESHOLD = 0.8D;
 
     @Override
@@ -206,8 +209,7 @@ public class MDVKeywordMapper extends BaseMapper {
     }
 
     private void printMapResultInfo(MapResult mapResult) {
-        if (mapResult instanceof HanlpMapResult) {
-            HanlpMapResult hanlpMatchResult = (HanlpMapResult) mapResult;
+        if (mapResult instanceof HanlpMapResult hanlpMatchResult) {
             hanlpMatchResult.getNatures().forEach(nature -> {
                 try {
                     SchemaElementType elementType = NatureHelper.convertToElementType(nature);
@@ -219,14 +221,18 @@ public class MDVKeywordMapper extends BaseMapper {
                     e.printStackTrace();
                 }
             });
-        } else if (mapResult instanceof DatabaseMapResult) {
-            DatabaseMapResult databaseMapResult = (DatabaseMapResult) mapResult;
+            return;
+        }
+
+        if (mapResult instanceof DatabaseMapResult databaseMapResult) {
             SchemaElement schemaElement = databaseMapResult.getSchemaElement();
             log.info("match=[database] model=[{}] id=[{}] type=[{}] name=[{}] detectWord=[{}] similarity=[{}] dataSetName=[{}]",
                     schemaElement.getModel(), schemaElement.getId(), schemaElement.getType().name(),
                     databaseMapResult.getName(), databaseMapResult.getDetectWord(), databaseMapResult.getSimilarity(), schemaElement.getDataSetName());
-        } else if (mapResult instanceof EmbeddingResult) {
-            EmbeddingResult matchResult = (EmbeddingResult) mapResult;
+            return;
+        }
+
+        if (mapResult instanceof EmbeddingResult matchResult) {
             Map<String, String> metadata = matchResult.getMetadata();
             // embedding的modelId和id多了_字符的前缀
             String modelId = metadata.get("modelId") != null ? String.valueOf(metadata.get("modelId")).replace("_", "") : "";
@@ -234,6 +240,7 @@ public class MDVKeywordMapper extends BaseMapper {
             log.info("match=[embedding] model=[{}] id=[{}] type=[{}] name=[{}] detectWord=[{}] similarity=[{}]",
                     modelId, id, metadata.get("type"),
                     matchResult.getName(), matchResult.getDetectWord(), matchResult.getSimilarity());
+            return;
         }
     }
 }

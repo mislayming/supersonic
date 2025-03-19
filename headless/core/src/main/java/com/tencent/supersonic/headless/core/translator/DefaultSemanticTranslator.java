@@ -10,6 +10,8 @@ import com.tencent.supersonic.headless.core.utils.ComponentFactory;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
@@ -20,6 +22,8 @@ import java.util.stream.Collectors;
 @Slf4j
 public class DefaultSemanticTranslator implements SemanticTranslator {
 
+    private static final Logger keyPipelineLog = LoggerFactory.getLogger("keyPipeline");
+
     public void translate(QueryStatement queryStatement) {
         if (queryStatement.isTranslated()) {
             return;
@@ -29,6 +33,8 @@ public class DefaultSemanticTranslator implements SemanticTranslator {
                 if (parser.accept(queryStatement)) {
                     log.debug("QueryConverter accept [{}]", parser.getClass().getName());
                     parser.parse(queryStatement);
+                    String sql = StringUtils.replace(queryStatement.getSql(), "\n", "");
+                    keyPipelineLog.info("\t\t {} translate parser[{}] -> {}", parser.getClass().getSimpleName(), queryStatement.isOk(), sql);
                     if (queryStatement.getStatus() != 0) {
                         break;
                     }
