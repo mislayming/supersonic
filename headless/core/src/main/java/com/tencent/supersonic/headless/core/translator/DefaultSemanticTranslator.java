@@ -33,7 +33,7 @@ public class DefaultSemanticTranslator implements SemanticTranslator {
                 if (parser.accept(queryStatement)) {
                     log.debug("QueryConverter accept [{}]", parser.getClass().getName());
                     parser.parse(queryStatement);
-                    String sql = StringUtils.replace(queryStatement.getSql(), "\n", "");
+                    String sql = StringUtils.replace(queryStatement.getSql(), "\n", " ");
                     keyPipelineLog.info("\t\t {} translate parser[{}] -> {}", parser.getClass().getSimpleName(), queryStatement.isOk(), sql);
                     if (queryStatement.getStatus() != 0) {
                         break;
