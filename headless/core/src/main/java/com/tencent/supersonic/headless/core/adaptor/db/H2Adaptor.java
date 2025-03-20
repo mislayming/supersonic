@@ -92,7 +92,7 @@ public class H2Adaptor extends BaseDbAdaptor {
             ExpressionDeParser expressionDeParser = new ExpressionDeParser() {
                 
                 // 定义需要处理的聚合函数名称
-                private final Set<String> aggregateFunctions = Set.of("AVG", "SUM", "MAX", "MIN", "COUNT");
+                private final Set<String> aggregateFunctions = Set.of("AVG", "SUM", "MAX", "MIN"/*, "COUNT"*/);
                 
                 @Override
                 public void visit(Function function) {
