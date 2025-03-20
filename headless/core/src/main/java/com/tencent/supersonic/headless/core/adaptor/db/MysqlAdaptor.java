@@ -2,6 +2,7 @@ package com.tencent.supersonic.headless.core.adaptor.db;
 
 import com.tencent.supersonic.common.pojo.Constants;
 import com.tencent.supersonic.common.pojo.enums.TimeDimensionEnum;
+import com.tencent.supersonic.headless.core.pojo.QueryStatement;
 
 public class MysqlAdaptor extends BaseDbAdaptor {
 
@@ -31,7 +32,7 @@ public class MysqlAdaptor extends BaseDbAdaptor {
     }
 
     @Override
-    public String rewriteSql(String sql) {
-        return sql;
+    public String rewriteSql(QueryStatement qstate) {
+        return qstate.getSql();
     }
 }

@@ -101,10 +101,11 @@ public class Configuration {
 
     public static SqlValidatorWithHints getSqlValidatorWithHints(CalciteSchema rootSchema,
             EngineType engineTyp) {
-        return new SqlAdvisorValidator(SqlStdOperatorTable.instance(),
-                new CalciteCatalogReader(rootSchema,
-                        Collections.singletonList(rootSchema.getName()), typeFactory, config),
-                typeFactory, SqlValidator.Config.DEFAULT);
+        return new SqlAdvisorValidator(
+                SqlStdOperatorTable.instance(),
+                new CalciteCatalogReader(rootSchema, Collections.singletonList(rootSchema.getName()), typeFactory, config),
+                typeFactory,
+                SqlValidator.Config.DEFAULT);
     }
 
     public static SqlToRelConverter.Config getConverterConfig() {
@@ -137,7 +138,8 @@ public class Configuration {
         SqlWriterConfig config = SqlPrettyWriter.config().withDialect(sqlDialect)
                 .withKeywordsLowerCase(false).withClauseEndsLine(true)
                 .withAlwaysUseParentheses(false).withSelectListItemsOnSeparateLines(false)
-                .withUpdateSetListNewline(false).withIndentation(0);
+                .withUpdateSetListNewline(false).withIndentation(0)
+                .withQuoteAllIdentifiers(true);
         if (EngineType.MYSQL.equals(engineType)) {
             // no backticks around function name
             config = config.withQuoteAllIdentifiers(false);

@@ -32,7 +32,7 @@ public class DbDialectOptimizer implements QueryOptimizer {
         String type = database.getType();
         DbAdaptor engineAdaptor = DbAdaptorFactory.getEngineAdaptor(type.toLowerCase());
         if (Objects.nonNull(engineAdaptor)) {
-            String adaptedSql = engineAdaptor.rewriteSql(sql);
+            String adaptedSql = engineAdaptor.rewriteSql(queryStatement);
             queryStatement.setSql(adaptedSql);
         }
     }

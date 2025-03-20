@@ -7,6 +7,7 @@ import com.tencent.supersonic.common.pojo.enums.TimeDimensionEnum;
 import com.tencent.supersonic.headless.api.pojo.DBColumn;
 import com.tencent.supersonic.headless.api.pojo.enums.FieldType;
 import com.tencent.supersonic.headless.core.pojo.ConnectInfo;
+import com.tencent.supersonic.headless.core.pojo.QueryStatement;
 import lombok.extern.slf4j.Slf4j;
 import net.sf.jsqlparser.expression.StringValue;
 import net.sf.jsqlparser.expression.operators.relational.ExpressionList;
@@ -48,7 +49,8 @@ public class PostgresqlAdaptor extends BaseDbAdaptor {
     }
 
     @Override
-    public String rewriteSql(String sql) {
+    public String rewriteSql(QueryStatement qstate) {
+        String sql = qstate.getSql();
         Map<String, String> functionMap = new HashMap<>();
         functionMap.put("MONTH".toLowerCase(), "TO_CHAR");
         functionMap.put("DAY".toLowerCase(), "TO_CHAR");

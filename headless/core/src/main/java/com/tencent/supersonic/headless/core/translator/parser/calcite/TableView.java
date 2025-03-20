@@ -18,7 +18,7 @@ import java.util.stream.Collectors;
 public class TableView {
 
     private Set<String> fields = Sets.newHashSet();
-    private List<SqlNode> select = Lists.newArrayList();
+    //private List<SqlNode> select = Lists.newArrayList();
 
     private List<SqlNode> filter = new ArrayList<>();
     private List<SqlNode> dimension = new ArrayList<>();
@@ -48,50 +48,34 @@ public class TableView {
             groupByNodeList = new SqlNodeList(groupByNodes, SqlParserPos.ZERO);
         }
 
-        // 构建维度列表
-        SqlNodeList dimensionNodeList = null;
-        if (dimension.size() > 0) {
-            dimensionNodeList = new SqlNodeList(getGroup(dimension), SqlParserPos.ZERO);
-        }
+
 
         // 构建过滤条件
         SqlNodeList filterNodeList = null;
-        if (filter.size() > 0) {
+        if (!filter.isEmpty()) {
             filterNodeList = new SqlNodeList(filter, SqlParserPos.ZERO);
         }
 
         if (measure.isEmpty()) {
-            // 添加 SELECT *
-            SqlIdentifier star = new SqlIdentifier(
-                    List.of("*"),
-                    SqlParserPos.ZERO
-            );
-            measure.add(star);
+            measure.add(SqlIdentifier.STAR);
         }
+
 
         // 在SqlSelect构造函数中使用groupByNodeList
         return new SqlSelect(
-            SqlParserPos.ZERO,
-            null,  // selectList
-            new SqlNodeList(measure, SqlParserPos.ZERO),  // from
-            table,  // where
-            filterNodeList,  // groupBy
-            groupByNodeList,  // having
+            SqlParserPos.ZERO, //pos
+            null,  // keywordList
+            new SqlNodeList(measure, SqlParserPos.ZERO),  // selectList
+            table,  // from
+            filterNodeList,  // where
+            groupByNodeList,  // groupBy
+            null,  // having
             null,  // windowDecls
-            null,  // orderBy
-            null,  // offset
-            order,  // fetch
-            offset,  // hints
-            fetch,
-            null
+            null,  // qualify
+            order,  // orderBy
+            offset,  // offset
+            fetch,  // fetch
+            null    //hints
         );
-    }
-
-    private List<SqlNode> getGroup(List<SqlNode> sqlNodeList) {
-        return sqlNodeList.stream()
-                .map(s -> (s.getKind().equals(SqlKind.AS)
-                        ? ((SqlBasicCall) s).getOperandList().get(0)
-                        : s))
-                .collect(Collectors.toList());
     }
 }

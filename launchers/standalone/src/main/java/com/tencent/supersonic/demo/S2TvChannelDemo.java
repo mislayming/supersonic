@@ -33,7 +33,7 @@ import java.util.*;
 @Order(3)  
 public class S2TvChannelDemo extends S2BaseDemo {  
 
-    public static final String AGENT_NAME = "电视频道助手";  
+    public static final String AGENT_NAME = "TVChannelAssistant";
 
     public void doRun() {  
         try {  
@@ -68,7 +68,7 @@ public class S2TvChannelDemo extends S2BaseDemo {
 
     public DomainResp addDomain() {  
         DomainReq domainReq = new DomainReq();  
-        domainReq.setName("电视数据域");  
+        domainReq.setName("TelevisionDomain");
         domainReq.setBizName("television");  
         domainReq.setParentId(0L);  
         domainReq.setViewers(Arrays.asList("admin", "tom", "jack"));  
@@ -80,7 +80,7 @@ public class S2TvChannelDemo extends S2BaseDemo {
 
     public ModelResp addTvChannelModel(DomainResp domain, DatabaseResp database) throws Exception {  
         ModelReq modelReq = new ModelReq();  
-        modelReq.setName("电视频道");  
+        modelReq.setName("TVChannel");
         modelReq.setBizName("tv_channel");  
         modelReq.setDatabaseId(database.getId());  
         modelReq.setDomainId(domain.getId());  
@@ -92,17 +92,17 @@ public class S2TvChannelDemo extends S2BaseDemo {
         List<Dimension> dimensions = new ArrayList<>();  
         modelDetail.setDimensions(dimensions);  
 
-        dimensions.add(new Dimension("频道名称", "series_name", DimensionType.categorical, 1));  
-        dimensions.add(new Dimension("国家", "Country", DimensionType.categorical, 1));  
-        dimensions.add(new Dimension("语言", "Language", DimensionType.categorical, 1));  
-        dimensions.add(new Dimension("内容类型", "Content", DimensionType.categorical, 1));  
-        dimensions.add(new Dimension("像素宽高比", "Pixel_aspect_ratio_PAR", DimensionType.categorical, 1));  
-        dimensions.add(new Dimension("高清电视", "Hight_definition_TV", DimensionType.categorical, 1));  
-        dimensions.add(new Dimension("按次付费", "Pay_per_view_PPV", DimensionType.categorical, 1));  
-        dimensions.add(new Dimension("套餐选项", "Package_Option", DimensionType.categorical, 1));  
+        dimensions.add(new Dimension("ChannelName", "series_name", DimensionType.categorical, 1));
+        dimensions.add(new Dimension("Country", "Country", DimensionType.categorical, 1));  
+        dimensions.add(new Dimension("Language", "Language", DimensionType.categorical, 1));  
+        dimensions.add(new Dimension("Content", "Content", DimensionType.categorical, 1));  
+        dimensions.add(new Dimension("PixelAspectRatio", "Pixel_aspect_ratio_PAR", DimensionType.categorical, 1));
+        dimensions.add(new Dimension("HighDefinitionTV", "Hight_definition_TV", DimensionType.categorical, 1));
+        dimensions.add(new Dimension("PayPerView", "Pay_per_view_PPV", DimensionType.categorical, 1));
+        dimensions.add(new Dimension("PackageOption", "Package_Option", DimensionType.categorical, 1));
 
         List<Identify> identifiers = new ArrayList<>();  
-        identifiers.add(new Identify("频道ID", IdentifyType.primary.name(), "id"));  
+        identifiers.add(new Identify("ChannelID", IdentifyType.primary.name(), "id"));
         modelDetail.setIdentifiers(identifiers);  
 
         List<Measure> measures = new ArrayList<>();  
@@ -122,7 +122,7 @@ public class S2TvChannelDemo extends S2BaseDemo {
 
     public ModelResp addCartoonModel(DomainResp domain, DatabaseResp database) throws Exception {  
         ModelReq modelReq = new ModelReq();  
-        modelReq.setName("卡通节目");  
+        modelReq.setName("Cartoon");  
         modelReq.setBizName("cartoon");  
         modelReq.setDatabaseId(database.getId());  
         modelReq.setDomainId(domain.getId());  
@@ -134,18 +134,18 @@ public class S2TvChannelDemo extends S2BaseDemo {
         List<Dimension> dimensions = new ArrayList<>();  
         modelDetail.setDimensions(dimensions);  
 
-        dimensions.add(new Dimension("标题", "Title", DimensionType.categorical, 1));  
-        dimensions.add(new Dimension("导演", "Directed_by", DimensionType.categorical, 1));  
-        dimensions.add(new Dimension("编剧", "Written_by", DimensionType.categorical, 1));  
-        dimensions.add(new Dimension("首播日期", "Original_air_date", DimensionType.time, 1));  
+        dimensions.add(new Dimension("Title", "Title", DimensionType.categorical, 1));  
+        dimensions.add(new Dimension("DirectedBy", "Directed_by", DimensionType.categorical, 1));
+        dimensions.add(new Dimension("WrittenBy", "Written_by", DimensionType.categorical, 1));
+        dimensions.add(new Dimension("OriginalAirDate", "Original_air_date", DimensionType.time, 1));
+        dimensions.add(new Dimension("ProductionCode", "Production_code", DimensionType.categorical, 1));
 
         List<Identify> identifiers = new ArrayList<>();  
-        identifiers.add(new Identify("卡通ID", IdentifyType.primary.name(), "id"));  
-        identifiers.add(new Identify("频道ID", IdentifyType.foreign.name(), "Channel"));  
+        identifiers.add(new Identify("CartoonID", IdentifyType.primary.name(), "id"));
+        identifiers.add(new Identify("ChannelID", IdentifyType.foreign.name(), "Channel"));
         modelDetail.setIdentifiers(identifiers);  
 
         List<Measure> measures = new ArrayList<>();  
-        measures.add(new Measure("制作代码", "Production_code", AggOperatorEnum.MAX.name(), 1));  
         modelDetail.setMeasures(measures);  
 
         modelDetail.setQueryType("sql_query");  
@@ -161,7 +161,7 @@ public class S2TvChannelDemo extends S2BaseDemo {
 
     public ModelResp addTvSeriesModel(DomainResp domain, DatabaseResp database) throws Exception {  
         ModelReq modelReq = new ModelReq();  
-        modelReq.setName("电视剧集");  
+        modelReq.setName("TVSeries");
         modelReq.setBizName("tv_series");  
         modelReq.setDatabaseId(database.getId());  
         modelReq.setDomainId(domain.getId());  
@@ -171,22 +171,22 @@ public class S2TvChannelDemo extends S2BaseDemo {
         modelReq.setAdminOrgs(Collections.emptyList());  
         ModelDetail modelDetail = new ModelDetail();  
         List<Dimension> dimensions = new ArrayList<>();  
-        modelDetail.setDimensions(dimensions);  
+        modelDetail.setDimensions(dimensions);
 
-        dimensions.add(new Dimension("剧集", "Episode", DimensionType.categorical, 1));  
-        dimensions.add(new Dimension("播出日期", "Air_Date", DimensionType.time, 1));  
-        dimensions.add(new Dimension("评分", "Rating", DimensionType.categorical, 1));  
-        dimensions.add(new Dimension("18-49评分占比", "18_49_Rating_Share", DimensionType.categorical, 1));  
-        dimensions.add(new Dimension("观众数量", "Viewers_m", DimensionType.categorical, 1));  
+        dimensions.add(new Dimension("Episode", "Episode", DimensionType.categorical, 1));  
+        dimensions.add(new Dimension("AirDate", "Air_Date", DimensionType.time, 1));
+        dimensions.add(new Dimension("18-49 Rating Share", "18_49_Rating_Share", DimensionType.categorical, 1));  
 
         List<Identify> identifiers = new ArrayList<>();  
-        identifiers.add(new Identify("剧集ID", IdentifyType.primary.name(), "id"));  
-        identifiers.add(new Identify("频道ID", IdentifyType.foreign.name(), "Channel"));  
+        identifiers.add(new Identify("SeriesID", IdentifyType.primary.name(), "id"));
+        identifiers.add(new Identify("ChannelID", IdentifyType.foreign.name(), "Channel"));
         modelDetail.setIdentifiers(identifiers);  
 
         List<Measure> measures = new ArrayList<>();  
-        measures.add(new Measure("占比", "Share", AggOperatorEnum.AVG.name(), 1));  
-        measures.add(new Measure("周排名", "Weekly_Rank", AggOperatorEnum.MIN.name(), 1));  
+        measures.add(new Measure("Rating", "Rating", AggOperatorEnum.AVG.name(), 1));  
+        measures.add(new Measure("Share", "Share", AggOperatorEnum.AVG.name(), 1));  
+        measures.add(new Measure("WeeklyRank", "Weekly_Rank", AggOperatorEnum.MIN.name(), 1));
+        measures.add(new Measure("Viewers", "Viewers_m", AggOperatorEnum.SUM.name(), 1));
         modelDetail.setMeasures(measures);  
 
         modelDetail.setQueryType("sql_query");  
@@ -197,10 +197,10 @@ public class S2TvChannelDemo extends S2BaseDemo {
 
     public DataSetResp addDataSet(DomainResp domain) {  
         DataSetReq dataSetReq = new DataSetReq();  
-        dataSetReq.setName("电视频道数据集");  
+        dataSetReq.setName("TVChannelDataset");
         dataSetReq.setBizName("TelevisionData");  
         dataSetReq.setDomainId(domain.getId());  
-        dataSetReq.setDescription("电视频道、卡通和电视剧数据");  
+        dataSetReq.setDescription("Dataset for TV Channels, Cartoons and TV Series");  
         dataSetReq.setAdmins(Lists.newArrayList("admin"));  
 
         List<DataSetModelConfig> dataSetModelConfigs = getDataSetModelConfigs(domain.getId());  
@@ -237,11 +237,11 @@ public class S2TvChannelDemo extends S2BaseDemo {
     private Agent addAgent(Long dataSetId) {  
         Agent agent = new Agent();  
         agent.setName(AGENT_NAME);  
-        agent.setDescription("帮助您分析电视频道、卡通节目和电视剧的各项数据");  
+        agent.setDescription("Help you analyze data about TV channels, cartoons, and TV series");  
         agent.setStatus(1);  
         agent.setEnableSearch(1);  
         agent.setExamples(  
-                Lists.newArrayList("某频道播放的所有卡通节目", "评分最高的三个电视剧集", "英语频道都有哪些", "某卡通节目的导演是谁"));  
+                Lists.newArrayList("All cartoon shows on a specific channel", "Top three TV series by rating", "What English language channels are available", "Who directed a specific cartoon"));  
         ToolConfig toolConfig = new ToolConfig();  
 
         // configure tools  

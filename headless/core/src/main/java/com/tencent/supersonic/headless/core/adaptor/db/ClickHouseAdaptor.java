@@ -3,6 +3,7 @@ package com.tencent.supersonic.headless.core.adaptor.db;
 import com.tencent.supersonic.common.jsqlparser.SqlReplaceHelper;
 import com.tencent.supersonic.common.pojo.Constants;
 import com.tencent.supersonic.common.pojo.enums.TimeDimensionEnum;
+import com.tencent.supersonic.headless.core.pojo.QueryStatement;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -34,11 +35,11 @@ public class ClickHouseAdaptor extends BaseDbAdaptor {
     }
 
     @Override
-    public String rewriteSql(String sql) {
+    public String rewriteSql(QueryStatement statement) {
         Map<String, String> functionMap = new HashMap<>();
         functionMap.put("MONTH".toLowerCase(), "toMonth");
         functionMap.put("DAY".toLowerCase(), "toDayOfMonth");
         functionMap.put("YEAR".toLowerCase(), "toYear");
-        return SqlReplaceHelper.replaceFunction(sql, functionMap);
+        return SqlReplaceHelper.replaceFunction(statement.getSql(), functionMap);
     }
 }

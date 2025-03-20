@@ -20,6 +20,7 @@ import com.tencent.supersonic.headless.core.translator.parser.calcite.render.Out
 import com.tencent.supersonic.headless.core.translator.parser.calcite.render.Renderer;
 import com.tencent.supersonic.headless.core.translator.parser.calcite.render.SourceRender;
 import com.tencent.supersonic.headless.core.translator.parser.s2sql.*;
+import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.calcite.sql.*;
 import org.apache.calcite.sql.fun.SqlStdOperatorTable;
@@ -35,6 +36,8 @@ import org.jgrapht.GraphPath;
 import org.jgrapht.alg.shortestpath.DijkstraShortestPath;
 import org.jgrapht.graph.DefaultEdge;
 import org.jgrapht.graph.DefaultUndirectedGraph;
+import com.tencent.supersonic.common.calcite.SemanticSqlDialect;
+import com.tencent.supersonic.common.calcite.SqlDialectFactory;
 
 import java.util.*;
 import java.util.function.BiFunction;
@@ -67,7 +70,7 @@ public class SqlBuilder2 {
             throw new Exception("data model not found");
         }
 
-        TableView tableView;
+        TableView tableView = null;
         if (!CollectionUtils.isEmpty(ontology.getJoinRelations()) && dataModels.size() > 1) {
             Set<DataModel> models = probeRelatedModels(dataModels, queryStatement.getOntology());
             tableView = render(ontologyQuery, models, scope, schema);
@@ -78,15 +81,19 @@ public class SqlBuilder2 {
         SqlNode parserNode = tableView.build();
         DatabaseResp database = queryStatement.getOntology().getDatabase();
         EngineType engineType = EngineType.fromString(database.getType());
+
         parserNode = optimizeParseNode(parserNode, engineType);
-        return SemanticNode.getSql(parserNode, engineType);
+        
+        String sql = SemanticNode.getSql(parserNode, engineType);
+        log.debug("最终生成的SQL: {}", sql);
+        
+        return sql;
     }
 
     private TableView render(OntologyQuery ontologyQuery, Set<DataModel> dataModels,
                              SqlValidatorScope scope, S2CalciteSchema schema) throws Exception {
         TableView outerTable = new TableView();
         Map<String, SqlNode> outerSelect = new HashMap<>();
-        EngineType engineType = EngineType.fromString(schema.getOntology().getDatabase().getType());
         
         // 收集所有数据模型的TableView
         Map<String, TableView> tableViewMap = new HashMap<>();
@@ -135,17 +142,17 @@ public class SqlBuilder2 {
             
             // 收集所有字段用于最终输出
             for (String field : tableView.getFields()) {
-                outerSelect.put(field, SemanticNode.parse(alias + "." + field, scope, engineType));
+                outerSelect.put(field, createSafeFieldNode(alias + "." + field, scope));
             }
         }
         
         // 构建JOIN树
         SqlNode joinTree = buildJoinTree(tableViewMap, schema, scope);
         
-        // 将所有字段添加到输出视图
-        for (Map.Entry<String, SqlNode> entry : outerSelect.entrySet()) {
-            outerTable.getSelect().add(entry.getValue());
-        }
+//        // 将所有字段添加到输出视图
+//        for (Map.Entry<String, SqlNode> entry : outerSelect.entrySet()) {
+//            outerTable.getSelect().add(entry.getValue());
+//        }
         outerTable.setTable(joinTree);
         
         return outerTable;
@@ -352,7 +359,7 @@ public class SqlBuilder2 {
             }
             
             // 构建SQL条件节点
-            SqlNode condition = buildJoinConditionFromTriples(joinConditions, scope, engineType);
+            SqlNode condition = buildJoinConditionFromTriples(joinConditions, scope);
             
             // 创建JOIN节点 - 不为JOIN结构添加别名
             SqlLiteral joinType = SemanticNode.getJoinSqlLiteral(joinInfo.relation.getJoinType());
@@ -392,7 +399,7 @@ public class SqlBuilder2 {
         SqlNode finalJoinNode = sqlNodeMap.values().iterator().next();
         
         // 创建显式字段列表，处理重复字段问题
-        SqlNodeList selectItems = createSelectItemsForJoin(joinEdges, tableViewMap, modelOriginalAlias);
+        SqlNodeList selectItems = createSelectItemsForJoin(joinEdges, tableViewMap, modelOriginalAlias, scope);
         
         // 创建带明确字段列表的SELECT语句
         return new SqlSelect(
@@ -417,7 +424,8 @@ public class SqlBuilder2 {
      */
     private SqlNodeList createSelectItemsForJoin(List<JoinInfo> joinEdges, 
                                                Map<String, TableView> tableViewMap,
-                                               Map<String, String> modelOriginalAlias) {
+                                               Map<String, String> modelOriginalAlias,
+                                               SqlValidatorScope scope) {
         // 创建显式字段列表，处理重复字段问题
         List<SqlNode> selectItems = new ArrayList<>();
         
@@ -461,7 +469,7 @@ public class SqlBuilder2 {
             
             log.info("表字段优先级顺序: {}", modelPriorityOrder);
             
-            // 按照优先级顺序添加字段
+
             for (String modelName : modelPriorityOrder) {
                 TableView view = tableViewMap.get(modelName);
                 if (view == null) {
@@ -473,21 +481,49 @@ public class SqlBuilder2 {
                 for (String field : view.getFields()) {
                     if (addedFields.contains(field)) {
                         // 字段已存在，使用表别名作为前缀添加
-                        selectItems.add(
-                            new SqlBasicCall(
-                                SqlStdOperatorTable.AS,
-                                new SqlNode[]{
-                                    new SqlIdentifier(Arrays.asList(alias, field), SqlParserPos.ZERO),
-                                    new SqlIdentifier(alias + "_" + field, SqlParserPos.ZERO)
-                                },
-                                SqlParserPos.ZERO
-                            )
-                        );
+                        SqlNode columnRef;
+                        try {
+                            // 使用安全方法创建字段引用
+                            columnRef = createSafeFieldNode(alias + "." + field, scope);
+                            
+                            SqlNode aliasNode = new SqlIdentifier(alias + "_" + field, SqlParserPos.ZERO);
+                            selectItems.add(
+                                new SqlBasicCall(
+                                    SqlStdOperatorTable.AS,
+                                    new SqlNode[]{ columnRef, aliasNode },
+                                    SqlParserPos.ZERO
+                                )
+                            );
+                        } catch (Exception e) {
+                            log.error("Error creating field reference for {}.{}: {}", 
+                                    alias, field, e.getMessage());
+                            // 出错时使用原始方法作为回退
+                            SqlNode[] nodes = new SqlNode[]{
+                                new SqlIdentifier(Arrays.asList(alias, field), SqlParserPos.ZERO),
+                                new SqlIdentifier(alias + "_" + field, SqlParserPos.ZERO)
+                            };
+                            selectItems.add(
+                                new SqlBasicCall(
+                                    SqlStdOperatorTable.AS,
+                                    nodes,
+                                    SqlParserPos.ZERO
+                                )
+                            );
+                        }
                     } else {
                         // 字段不存在，直接添加
-                        selectItems.add(
-                            new SqlIdentifier(Arrays.asList(alias, field), SqlParserPos.ZERO)
-                        );
+                        try {
+                            // 使用安全方法创建字段引用
+                            SqlNode columnRef = createSafeFieldNode(alias + "." + field, scope);
+                            selectItems.add(columnRef);
+                        } catch (Exception e) {
+                            log.error("Error creating field reference for {}.{}: {}", 
+                                    alias, field, e.getMessage());
+                            // 出错时使用原始方法作为回退
+                            selectItems.add(
+                                new SqlIdentifier(Arrays.asList(alias, field), SqlParserPos.ZERO)
+                            );
+                        }
                         addedFields.add(field);
                     }
                 }
@@ -498,48 +534,9 @@ public class SqlBuilder2 {
     }
 
     /**
-     * 使用JOIN结构中的正确引用路径构建JOIN条件
-     */
-    private SqlNode buildJoinConditionWithJoinPath(JoinRelation relation,
-                                                Map<String, String> joinFieldMap,
-                                                SqlValidatorScope scope, EngineType engineType) throws Exception {
-        // 使用JOIN关系中的条件
-        if (!CollectionUtils.isEmpty(relation.getJoinCondition())) {
-            List<Triple<String, String, String>> joinConditions = relation.getJoinCondition().stream()
-                .map(con -> {
-                    // 获取字段在JOIN结构中的正确引用路径
-                    String leftPath = joinFieldMap.getOrDefault(
-                        relation.getLeft() + "." + con.getLeft(),
-                        relation.getLeft() + "." + con.getLeft());
-                        
-                    String rightPath = joinFieldMap.getOrDefault(
-                        relation.getRight() + "." + con.getRight(),
-                        relation.getRight() + "." + con.getRight());
-                    
-                    return Triple.of(leftPath, con.getMiddle(), rightPath);
-                })
-                .collect(Collectors.toList());
-                
-            log.info("使用JOIN结构中的正确引用路径连接: {}", 
-                    joinConditions.stream()
-                        .map(c -> c.getLeft() + " " + c.getMiddle() + " " + c.getRight())
-                        .collect(Collectors.joining(", ")));
-                        
-            return buildJoinConditionFromTriples(joinConditions, scope, engineType);
-        }
-        
-        // 如果没有找到合适的条件，使用1=1作为默认条件
-        log.warn("无法找到JOIN条件，使用1=1作为默认");
-                
-        List<SqlNode> constantOns = new ArrayList<>();
-        constantOns.add(SqlLiteral.createExactNumeric("1", SqlParserPos.ZERO));
-        constantOns.add(SqlLiteral.createExactNumeric("1", SqlParserPos.ZERO));
-        return new SqlBasicCall(SqlStdOperatorTable.EQUALS, constantOns, SqlParserPos.ZERO, null);
-    }
-
-    /**
      * 构建一个简单的线性JOIN（作为后备方案）
      */
+
     private SqlNode buildLinearJoin(Map<String, TableView> tableViewMap, S2CalciteSchema schema,
                                   SqlValidatorScope scope) throws Exception {
         if (tableViewMap.isEmpty()) {
@@ -588,7 +585,7 @@ public class SqlBuilder2 {
                             .collect(Collectors.toList());
                     }
                     
-                    condition = buildJoinConditionFromTriples(joinConditions, scope, engineType);
+                    condition = buildJoinConditionFromTriples(joinConditions, scope);
                     break;
                 }
             }
@@ -643,32 +640,49 @@ public class SqlBuilder2 {
         return SemanticNode.getTable(tableView.getTable());
     }
 
-    public static TableView renderOne(Set<Metric> queryMetrics,
+    @SneakyThrows
+    public TableView renderOne(Set<Metric> queryMetrics,
                                       Set<Dimension> queryDimensions, DataModel dataModel, SqlValidatorScope scope,
                                       S2CalciteSchema schema) {
         TableView tableView = new TableView();
-        EngineType engineType = EngineType.fromString(schema.getOntology().getDatabase().getType());
+
         Set<String> queryFields = tableView.getFields();
         if (Objects.nonNull(queryMetrics)) {
             // TODO Metric也是如此，bizname 呢？
-            queryMetrics.stream().forEach(m -> queryFields.add(m.getName()));
+            queryMetrics.forEach(m -> queryFields.add(m.getName()));
         }
         if (Objects.nonNull(queryDimensions)) {
             // TODO 这里就奇怪！！， exp 还是 bizname，还是 name
-            queryDimensions.stream().forEach(d -> queryFields.add(d.getExpr()));
+            queryDimensions.forEach(d -> queryFields.add(d.getExpr()));
         }
 
-        try {
-            for (String field : queryFields) {
-                tableView.getSelect().add(SemanticNode.parse(field, scope, engineType));
-            }
+//        try {
+//            for (String field : queryFields) {
+//                // 直接使用字段名时，不需要处理别名和字段的组合
+//                tableView.getSelect().add(createSafeFieldNode(field, scope));
+//            }
             tableView.setTable(DataModelNode.build(dataModel, scope));
-        } catch (Exception e) {
-            log.error("Failed to create sqlNode for data model {}", dataModel);
-        }
+//        } catch (Exception e) {
+//            log.error("Failed to create sqlNode for data model {}", dataModel);
+//        }
 
         return tableView;
     }
+    
+    /**
+     * 创建安全的字段引用，处理关键字等问题
+     */
+    private SqlNode createSafeFieldNode(String field, SqlValidatorScope scope) throws Exception {
+        try {
+            // SemanticNode.parse 现在已经能处理所有情况，包括复杂表达式中的关键字
+            return SemanticNode.parse(field, scope, EngineType.fromString(schema.getOntology().getDatabase().getType()));
+        } catch (Exception e) {
+            // 记录错误并抛出异常
+            log.error("Failed to parse field [{}]: {}", field, e.getMessage());
+            throw e;
+        }
+    }
+
 
     private Set<DataModel> probeRelatedModels(List<DataModel> dataModels, Ontology ontology) {
         List<JoinRelation> joinRelations = ontology.getJoinRelations();
@@ -837,33 +851,16 @@ public class SqlBuilder2 {
     }
 
     /**
-     * 检查字段是否是主键标识
-     */
-    private static boolean isPrimary(String name, List<Identify> identifies) {
-        Optional<Identify> identify =
-                identifies.stream().filter(i -> i.getName().equalsIgnoreCase(name)).findFirst();
-        return identify.filter(value -> IdentifyType.primary.toString().equals(value.getType())).isPresent();
-    }
-
-    /**
-     * 检查字段是否是外键标识
-     */
-    private static boolean isForeign(String name, List<Identify> identifies) {
-        Optional<Identify> identify =
-                identifies.stream().filter(i -> i.getName().equalsIgnoreCase(name)).findFirst();
-        return identify.filter(value -> IdentifyType.foreign.toString().equals(value.getType())).isPresent();
-    }
-
-    /**
      * 从三元组列表构建JOIN条件
      */
     private SqlNode buildJoinConditionFromTriples(List<Triple<String, String, String>> conditions,
-                                                SqlValidatorScope scope, EngineType engineType) throws Exception {
+                                                SqlValidatorScope scope) throws Exception {
+
         SqlNode condition = null;
         for (Triple<String, String, String> con : conditions) {
             List<SqlNode> ons = new ArrayList<>();
-            ons.add(SemanticNode.parse(con.getLeft(), scope, engineType));
-            ons.add(SemanticNode.parse(con.getRight(), scope, engineType));
+            ons.add(createSafeFieldNode(con.getLeft(), scope));
+            ons.add(createSafeFieldNode(con.getRight(), scope));
             
             SqlNode current = new SqlBasicCall(
                 SemanticNode.getBinaryOperator(con.getMiddle()),
@@ -887,55 +884,5 @@ public class SqlBuilder2 {
         return condition;
     }
 
-    /**
-     * 为连接关系构建JOIN条件 (保持兼容性)
-     */
-    private SqlNode buildJoinCondition(JoinRelation relation, TableView leftView, TableView rightView,
-                                     SqlValidatorScope scope, EngineType engineType) throws Exception {
-        // 创建临时的joinFieldMap
-        Map<String, String> joinFieldMap = new HashMap<>();
-
-        // 初始化字段引用路径
-        if (leftView != null && leftView.getDataModel() != null) {
-            String leftModelName = leftView.getDataModel().getName();
-            for (String field : leftView.getFields()) {
-                joinFieldMap.put(leftModelName + "." + field, leftView.getAlias() + "." + field);
-            }
-        }
-
-        if (rightView != null && rightView.getDataModel() != null) {
-            String rightModelName = rightView.getDataModel().getName();
-            for (String field : rightView.getFields()) {
-                joinFieldMap.put(rightModelName + "." + field, rightView.getAlias() + "." + field);
-            }
-        }
-
-        return buildJoinConditionWithJoinPath(relation, joinFieldMap, scope, engineType);
-    }
-
-    /**
-     * 简化的JOIN条件构建方法 (保持向后兼容)
-     */
-    private SqlNode buildJoinConditionSimple(JoinRelation relation,
-                                           String leftAlias, String rightAlias,
-                                           SqlValidatorScope scope, EngineType engineType) throws Exception {
-        // 创建临时的joinFieldMap
-        Map<String, String> joinFieldMap = new HashMap<>();
-
-        // 初始化字段引用路径
-        for (String field : relation.getJoinCondition().stream()
-                .map(c -> c.getLeft())
-                .collect(Collectors.toSet())) {
-            joinFieldMap.put(relation.getLeft() + "." + field, leftAlias + "." + field);
-        }
-
-        for (String field : relation.getJoinCondition().stream()
-                .map(c -> c.getRight())
-                .collect(Collectors.toSet())) {
-            joinFieldMap.put(relation.getRight() + "." + field, rightAlias + "." + field);
-        }
-
-        return buildJoinConditionWithJoinPath(relation, joinFieldMap, scope, engineType);
-    }
 
 }

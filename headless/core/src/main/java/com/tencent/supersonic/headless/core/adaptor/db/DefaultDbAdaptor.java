@@ -1,5 +1,7 @@
 package com.tencent.supersonic.headless.core.adaptor.db;
 
+import com.tencent.supersonic.headless.core.pojo.QueryStatement;
+
 public class DefaultDbAdaptor extends BaseDbAdaptor {
 
     @Override
@@ -8,7 +10,7 @@ public class DefaultDbAdaptor extends BaseDbAdaptor {
     }
 
     @Override
-    public String rewriteSql(String sql) {
-        return sql;
+    public String rewriteSql(QueryStatement statement) {
+        return statement.getSql();
     }
 }

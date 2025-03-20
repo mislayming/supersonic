@@ -99,12 +99,7 @@ public class ChatWorkflowEngine {
                 || MapUtils.isEmpty(queryCtx.getMapInfo().getDataSetElementMatches())) {
             schemaMappers.forEach(mapper -> {
                         mapper.map(queryCtx);
-                        String tpl = """
-                                \t dataset: {0} | {1}
-                                \t model: {2} | {3} | {4}
-                                \t detect: {5} | {6}
-                                \t similarity: {7}
-                                """;
+                        String tpl = " dataset: {0} | {1}, model: {2} | {3} | {4} , detect: {5} | {6} , similarity: {7} ";
 
                         String msg = queryCtx.getMapInfo().getDataSetElementMatches().values().stream().flatMap(List::stream).map(t -> {
                             SchemaElement el = t.getElement();
@@ -114,9 +109,9 @@ public class ChatWorkflowEngine {
                                     t.getDetectWord(), t.getWord(),
                                     t.getSimilarity()
                             );
-                        }).collect(Collectors.joining("\t ---\n"));
+                        }).collect(Collectors.joining(",", "[", "]"));
                         //queryCtx.getMapInfo().getDataSetElementMatches()
-                        keyPipelineLog.info("\t {} mapping -> \n{}", mapper.getClass().getSimpleName(), msg);
+                        keyPipelineLog.info("\t {} mapping -> {}", mapper.getClass().getSimpleName(), msg);
                     }
             );
         }
@@ -186,7 +181,7 @@ public class ChatWorkflowEngine {
                 }
 
 
-                keyPipelineLog.info("\t translating[{}/{}] -> {}", i, max, StringUtils.normalizeSpace(parseInfo.getSqlInfo().getQuerySQL()));
+                keyPipelineLog.info("\t translating - {}[{}/{}] -> {}", parseResult.getState(), i, max, StringUtils.normalizeSpace(parseInfo.getSqlInfo().getQuerySQL()));
 //                log.info(
 //                        "SqlInfoProcessor results:\n"
 //                                + "Parsed S2SQL: {}\nCorrected S2SQL: {}\nQuery SQL: {}",

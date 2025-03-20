@@ -40,7 +40,7 @@ public class OntologyQueryParser implements QueryParser {
             SqlBuilder2 sqlBuilder = new SqlBuilder2(semanticSchema);
             sql = sqlBuilder.buildOntologySql(queryStatement);
         } else {
-            SqlBuilder3 sqlBuilder = new SqlBuilder3(semanticSchema);
+            SqlBuilder sqlBuilder = new SqlBuilder(semanticSchema);
             sql = sqlBuilder.buildOntologySql(queryStatement);
         }
         System.out.println("-------final--------");

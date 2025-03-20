@@ -149,12 +149,15 @@ public class NL2SQLParser implements ChatQueryParser {
                 addDynamicExemplars(parseContext, queryNLReq);
                 doParse(queryNLReq, parseContext.getResponse());
 
+                /*
+                // NOTE：失败了就失败了，不用再次处理，这种做法并不好。解决不了问题
                 // try again with all semantic fields passed to LLM
                 if (parseContext.getResponse().getState().equals(ParseResp.ParseState.FAILED)) {
                     queryNLReq.setSelectedParseInfo(null);
                     queryNLReq.setMapModeEnum(MapModeEnum.ALL);
                     doParse(queryNLReq, parseContext.getResponse());
                 }
+                 */
             }
         } finally {
             stopWatch.stop();

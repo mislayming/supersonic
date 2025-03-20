@@ -4,6 +4,7 @@ import com.google.common.collect.Lists;
 import com.tencent.supersonic.headless.api.pojo.DBColumn;
 import com.tencent.supersonic.headless.api.pojo.enums.FieldType;
 import com.tencent.supersonic.headless.core.pojo.ConnectInfo;
+import com.tencent.supersonic.headless.core.pojo.QueryStatement;
 import lombok.extern.slf4j.Slf4j;
 
 import java.sql.DatabaseMetaData;
@@ -35,8 +36,8 @@ public class DuckdbAdaptor extends DefaultDbAdaptor {
     }
 
     @Override
-    public String rewriteSql(String sql) {
-        return sql.replaceAll("`", "");
+    public String rewriteSql(QueryStatement statement) {
+        return statement.getSql().replaceAll("`", "");
     }
 
 }

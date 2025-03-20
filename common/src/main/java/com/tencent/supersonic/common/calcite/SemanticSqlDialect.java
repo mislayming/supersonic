@@ -42,6 +42,10 @@ public class SemanticSqlDialect extends SqlDialect {
         writer.endList(fetchFrame);
     }
 
+    public String getIdentifierQuoteString() {
+        return identifierQuoteString;
+    }
+
     @Override
     public void quoteStringLiteralUnicode(StringBuilder buf, String val) {
         buf.append("'");

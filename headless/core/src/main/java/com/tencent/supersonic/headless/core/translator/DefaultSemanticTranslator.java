@@ -1,5 +1,6 @@
 package com.tencent.supersonic.headless.core.translator;
 
+import com.tencent.supersonic.common.calcite.SqlIdentifierQuoteUtil;
 import com.tencent.supersonic.common.calcite.SqlMergeWithUtils;
 import com.tencent.supersonic.common.pojo.enums.EngineType;
 import com.tencent.supersonic.headless.core.pojo.QueryStatement;
@@ -33,11 +34,16 @@ public class DefaultSemanticTranslator implements SemanticTranslator {
                 if (parser.accept(queryStatement)) {
                     log.debug("QueryConverter accept [{}]", parser.getClass().getName());
                     parser.parse(queryStatement);
-                    String sql = StringUtils.replace(queryStatement.getSql(), "\n", " ");
-                    keyPipelineLog.info("\t\t {} translate parser[{}] -> {}", parser.getClass().getSimpleName(), queryStatement.isOk(), sql);
+                    String innerSQL = StringUtils.replace(queryStatement.getSql(), "\n", " ");
+                    String querySQL = StringUtils.replace(queryStatement.getSqlQuery().getSql(), "\n", " ");
+                    String placeholder = "                         ";
+                    keyPipelineLog.info("\t\t {} translate parser[{}] -> \n{}\t\t\t\t - querySQL: {} \n{}\t\t\t\t - innerSQL: {}", parser.getClass().getSimpleName(), queryStatement.isOk(), placeholder, querySQL, placeholder, innerSQL);
                     if (queryStatement.getStatus() != 0) {
                         break;
                     }
+                }
+                else {
+                    keyPipelineLog.info("\t\t {} translate parser[{}] didn't accept", parser.getClass().getSimpleName(), queryStatement.isOk());
                 }
             }
             if (!queryStatement.isOk()) {
@@ -57,21 +63,25 @@ public class DefaultSemanticTranslator implements SemanticTranslator {
             for (QueryOptimizer optimizer : ComponentFactory.getQueryOptimizers()) {
                 if (optimizer.accept(queryStatement)) {
                     optimizer.rewrite(queryStatement);
+                    keyPipelineLog.info("\t\t {} translate optimizer -> {}", optimizer.getClass().getSimpleName(), StringUtils.replace(queryStatement.getSql(), "\n", " "));
+                }
+                else {
+                    keyPipelineLog.info("\t\t {} translate optimizer didn't accept", optimizer.getClass().getSimpleName());
                 }
             }
             log.info("translated query SQL: [{}]",
                     StringUtils.normalizeSpace(queryStatement.getSql()));
         } catch (Exception e) {
             queryStatement.setErrMsg(e.getMessage());
-            log.error("Failed to translate query [{}]", e.getMessage(), e);
+            keyPipelineLog.error("Failed to translate query [{}]", e.getMessage(), e);
         }
     }
 
     private void mergeOntologyQuery(QueryStatement queryStatement) throws Exception {
         SqlQuery sqlQuery = queryStatement.getSqlQuery();
-        String ontologyQuerySql = sqlQuery.getSql();
         String ontologyInnerTable = sqlQuery.getTable();
-        String ontologyInnerSql = queryStatement.getSql();
+        String ontologyQuerySql = SqlIdentifierQuoteUtil.addQuotesToSql(sqlQuery.getSql());
+        String ontologyInnerSql = SqlIdentifierQuoteUtil.addQuotesToSql(queryStatement.getSql());
 
         List<Pair<String, String>> tables = new ArrayList<>();
         tables.add(Pair.of(ontologyInnerTable, ontologyInnerSql));

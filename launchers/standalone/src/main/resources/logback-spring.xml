@@ -90,6 +90,7 @@
     <!-- 业务日志输出 -->
     <appender name="keyPipelineAppender" class="ch.qos.logback.core.rolling.RollingFileAppender">
         <File>${LOG_PATH}/s2-llm.log</File>
+        <append>false</append>
         <!-- 循环政策：基于时间创建日志文件 -->
         <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
             <!-- 日志文件名格式 -->

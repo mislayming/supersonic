@@ -23,6 +23,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 
 @Service
 @Slf4j
@@ -85,18 +86,20 @@ public class OnePassSCSqlGenStrategy extends SqlGenStrategy {
             prompt2Exemplar.put(prompt, exemplars);
         }
 
+        AtomicInteger index = new AtomicInteger(1);
+        int max = prompt2Exemplar.size();
         // 3.perform multiple self-consistency inferences parallelly
         Map<String, Prompt> output2Prompt = new ConcurrentHashMap<>();
         prompt2Exemplar.keySet().parallelStream().forEach(prompt -> {
             SemanticSql s2Sql = extractor.generateSemanticSql(prompt.toUserMessage().singleText());
             output2Prompt.put(s2Sql.getSql(), prompt);
             keyPipelineLog.info("""
-                    OnePassSCSqlGenStrategy - LLM \n
+                    \tOnePassSCSqlGenStrategy[{}/{}] - LLM \n
                     prompt: {} \n
                     thought:{}
                     sql:{}
                     """,
-                    prompt.text(), s2Sql.getThought(), s2Sql.getSql());
+                    index.getAndIncrement(), max, prompt.text(), s2Sql.getThought(), s2Sql.getSql());
         });
 
         // 4.format response.

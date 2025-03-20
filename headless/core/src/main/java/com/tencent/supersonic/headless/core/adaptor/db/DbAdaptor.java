@@ -3,6 +3,7 @@ package com.tencent.supersonic.headless.core.adaptor.db;
 import com.tencent.supersonic.headless.api.pojo.DBColumn;
 import com.tencent.supersonic.headless.api.pojo.enums.FieldType;
 import com.tencent.supersonic.headless.core.pojo.ConnectInfo;
+import com.tencent.supersonic.headless.core.pojo.QueryStatement;
 
 import java.sql.SQLException;
 import java.util.List;
@@ -12,7 +13,7 @@ public interface DbAdaptor {
 
     String getDateFormat(String dateType, String dateFormat, String column);
 
-    String rewriteSql(String sql);
+    String rewriteSql(QueryStatement statement);
 
     List<String> getDBs(ConnectInfo connectInfo) throws SQLException;
 
