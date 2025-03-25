@@ -19,11 +19,12 @@ public class MDVHanLPSegmentProvider implements HanLPSegmentProvider {
 
     public static final String FILE_CWS = "data/model/perceptron/pku199801/cws.bin";
     public static final String FILE_POS = "data/model/perceptron/pku199801/pos.bin";
+    public static final String FILE_NER = "data/model/perceptron/pku199801/ner.bin";
 
     @Override
     public Segment getSegment() {
         try {
-            return new PerceptronLexicalAnalyzer(getFilePath(FILE_CWS), getFilePath(FILE_POS));
+            return new PerceptronLexicalAnalyzer(getFilePath(FILE_CWS), getFilePath(FILE_POS), getFilePath(FILE_NER));
         } catch (Exception e) {
             log.error("读取HandLP文件失败。", e);
         }
