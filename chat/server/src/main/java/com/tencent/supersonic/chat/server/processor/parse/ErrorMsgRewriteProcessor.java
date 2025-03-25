@@ -71,8 +71,9 @@ public class ErrorMsgRewriteProcessor implements ParseResultProcessor {
         Response<AiMessage> response = chatLanguageModel.generate(prompt.toUserMessage());
         String rewrittenMsg = response.content().text();
         parseContext.getResponse().setErrorMsg(rewrittenMsg);
-//        keyPipelineLog.info("ErrorMessageProcessor modelReq:\n{} \nmodelResp:\n{}", prompt.text(),
-//                rewrittenMsg);
+        // keyPipelineLog.info("ErrorMessageProcessor modelReq:\n{} \nmodelResp:\n{}",
+        // prompt.text(),
+        // rewrittenMsg);
     }
 
 }

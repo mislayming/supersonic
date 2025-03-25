@@ -17,8 +17,8 @@ import com.tencent.supersonic.headless.chat.knowledge.KnowledgeBaseService;
 import com.tencent.supersonic.headless.chat.knowledge.helper.HanlpHelper;
 import com.tencent.supersonic.headless.chat.knowledge.helper.NatureHelper;
 import com.tencent.supersonic.headless.chat.mapper.DataSetWithSemanticType;
+import com.tencent.supersonic.headless.chat.mapper.HanlpDictMatchStrategy;
 import com.tencent.supersonic.headless.chat.mapper.MatchText;
-import com.tencent.supersonic.headless.chat.mapper.SearchMatchStrategy;
 import com.tencent.supersonic.headless.server.service.DataSetService;
 import com.tencent.supersonic.headless.server.service.RetrieveService;
 import com.tencent.supersonic.headless.server.service.SchemaService;
@@ -27,17 +27,7 @@ import org.apache.commons.collections.CollectionUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.HashSet;
-import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -55,8 +45,11 @@ public class RetrieveServiceImpl implements RetrieveService {
     @Autowired
     private KnowledgeBaseService knowledgeBaseService;
 
+    // @Autowired
+    // private SearchMatchStrategy searchMatchStrategy;
+
     @Autowired
-    private SearchMatchStrategy searchMatchStrategy;
+    private HanlpDictMatchStrategy searchMatchStrategy;
 
     @Override
     public List<SearchResult> retrieve(QueryNLReq queryNLReq) {
@@ -78,7 +71,7 @@ public class RetrieveServiceImpl implements RetrieveService {
         chatQueryContext.setModelIdToDataSetIds(dataSetService.getModelIdToDataSetIds());
 
         Map<MatchText, List<HanlpMapResult>> regTextMap =
-                searchMatchStrategy.match(chatQueryContext, originals, dataSetIds);
+                searchMatchStrategy.match(chatQueryContext, dataSetIds);
         regTextMap.values().forEach(HanlpHelper::transLetterOriginal);
 
         // 3. Get the most matching data
@@ -86,7 +79,7 @@ public class RetrieveServiceImpl implements RetrieveService {
                 .entrySet().stream().filter(entry -> CollectionUtils.isNotEmpty(entry.getValue()))
                 .max(Comparator.comparingInt(entry -> entry.getKey().getDetectSegment().length()));
 
-        if (!mostSimilarSearchResult.isPresent()) {
+        if (mostSimilarSearchResult.isEmpty()) {
             return Collections.emptyList();
         }
 
@@ -217,9 +210,6 @@ public class RetrieveServiceImpl implements RetrieveService {
 
     /**
      * * convert nature to name
-     *
-     * @param recommendTextListEntry
-     * @return
      */
     private Map<String, String> getNatureToNameMap(
             Map.Entry<MatchText, List<HanlpMapResult>> recommendTextListEntry,
@@ -229,8 +219,7 @@ public class RetrieveServiceImpl implements RetrieveService {
 
         return recommendValues.stream().flatMap(entry -> {
             List<String> filteredNatures = entry.getNatures().stream()
-                    .filter(nature -> isNatureValid(nature, possibleModels))
-                    .collect(Collectors.toList());
+                    .filter(nature -> isNatureValid(nature, possibleModels)).toList();
 
             return filteredNatures.stream()
                     .map(nature -> DictWord.builder().word(entry.getName()).nature(nature).build());

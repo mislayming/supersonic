@@ -9,6 +9,7 @@ public class S2Term {
 
     public String word;
 
+    // 从 modelId 转换成了 datasetId, 有毛用啊!!搞得还复杂
     public Nature nature;
     public int offset;
     public int frequency = 0;

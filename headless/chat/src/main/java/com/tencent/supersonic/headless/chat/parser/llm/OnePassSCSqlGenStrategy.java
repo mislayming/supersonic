@@ -98,8 +98,8 @@ public class OnePassSCSqlGenStrategy extends SqlGenStrategy {
                     prompt: {} \n
                     thought:{}
                     sql:{}
-                    """,
-                    index.getAndIncrement(), max, prompt.text(), s2Sql.getThought(), s2Sql.getSql());
+                    """, index.getAndIncrement(), max, prompt.text(), s2Sql.getThought(),
+                    s2Sql.getSql());
         });
 
         // 4.format response.

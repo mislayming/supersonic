@@ -8,6 +8,7 @@ import com.tencent.supersonic.headless.api.pojo.SchemaMapInfo;
 import com.tencent.supersonic.headless.api.pojo.SemanticSchema;
 import com.tencent.supersonic.headless.api.pojo.response.S2Term;
 import com.tencent.supersonic.headless.chat.ChatQueryContext;
+import com.tencent.supersonic.headless.chat.knowledge.MapResult;
 import com.tencent.supersonic.headless.chat.knowledge.helper.HanlpHelper;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections.CollectionUtils;
@@ -121,21 +122,26 @@ public abstract class BaseMapper implements SchemaMapper {
         return element.getAlias();
     }
 
-    public <T> List<T> getMatches(ChatQueryContext chatQueryContext, MatchStrategy matchStrategy) {
+    public <T extends MapResult> List<T> getMatches(ChatQueryContext chatQueryContext,
+            MatchStrategy<T> matchStrategy) {
+
         String queryText = chatQueryContext.getRequest().getQueryText();
-        List<S2Term> terms =
-                HanlpHelper.getTerms(queryText, chatQueryContext.getModelIdToDataSetIds());
-        terms = HanlpHelper.getTerms(terms, chatQueryContext.getRequest().getDataSetIds());
-        Map<MatchText, List<T>> matchResult = matchStrategy.match(chatQueryContext, terms,
+
+
+        // List<S2Term> terms;
+        // terms = HanlpHelper.getTerms(queryText, chatQueryContext.getModelIdToDataSetIds());
+        // terms = HanlpHelper.getTerms(terms, chatQueryContext.getRequest().getDataSetIds());
+
+
+        Map<MatchText, List<T>> matchResult = matchStrategy.match(chatQueryContext,
                 chatQueryContext.getRequest().getDataSetIds());
         List<T> matches = new ArrayList<>();
         if (Objects.isNull(matchResult)) {
             return matches;
         }
-        Optional<List<T>> first = matchResult.entrySet().stream()
-                .filter(entry -> CollectionUtils.isNotEmpty(entry.getValue()))
-                .map(entry -> entry.getValue()).findFirst();
 
+        Optional<List<T>> first =
+                matchResult.values().stream().filter(CollectionUtils::isNotEmpty).findFirst();
         if (first.isPresent()) {
             matches = first.get();
         }

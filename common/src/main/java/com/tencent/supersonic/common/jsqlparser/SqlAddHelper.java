@@ -44,10 +44,11 @@ public class SqlAddHelper {
         if (selectStatement instanceof PlainSelect) {
             PlainSelect plainSelect = (PlainSelect) selectStatement;
             Set<String> selectFieldNames = getSelectFieldNames(plainSelect);
-            fields.stream().filter(Objects::nonNull).filter(f -> !selectFieldNames.contains(f)).forEach(field -> {
-                SelectItem<Column> selectExpressionItem = new SelectItem(new Column(field));
-                plainSelect.addSelectItems(selectExpressionItem);
-            });
+            fields.stream().filter(Objects::nonNull).filter(f -> !selectFieldNames.contains(f))
+                    .forEach(field -> {
+                        SelectItem<Column> selectExpressionItem = new SelectItem(new Column(field));
+                        plainSelect.addSelectItems(selectExpressionItem);
+                    });
 
         } else if (selectStatement instanceof SetOperationList) {
             SetOperationList setOperationList = (SetOperationList) selectStatement;
@@ -227,7 +228,7 @@ public class SqlAddHelper {
     }
 
     private static void addAggregateToSelectItems(List<SelectItem<?>> selectItems,
-                                                  Map<String, String> fieldNameToAggregate) {
+            Map<String, String> fieldNameToAggregate) {
         for (SelectItem selectItem : selectItems) {
             Expression expression = selectItem.getExpression();
             Function function =
@@ -240,7 +241,7 @@ public class SqlAddHelper {
     }
 
     private static void addAggregateToOrderByItems(List<OrderByElement> orderByElements,
-                                                   Map<String, String> fieldNameToAggregate) {
+            Map<String, String> fieldNameToAggregate) {
         if (orderByElements == null) {
             return;
         }
@@ -256,7 +257,7 @@ public class SqlAddHelper {
     }
 
     private static void addAggregateToGroupByItems(GroupByElement groupByElement,
-                                                   Map<String, String> fieldNameToAggregate) {
+            Map<String, String> fieldNameToAggregate) {
         if (groupByElement == null) {
             return;
         }
@@ -272,7 +273,7 @@ public class SqlAddHelper {
     }
 
     private static void addAggregateToWhereItems(Expression whereExpression,
-                                                 Map<String, String> fieldNameToAggregate) {
+            Map<String, String> fieldNameToAggregate) {
         if (whereExpression == null) {
             return;
         }
@@ -280,7 +281,7 @@ public class SqlAddHelper {
     }
 
     private static void modifyWhereExpression(Expression whereExpression,
-                                              Map<String, String> fieldNameToAggregate) {
+            Map<String, String> fieldNameToAggregate) {
         if (SqlSelectHelper.isLogicExpression(whereExpression)) {
             if (whereExpression instanceof AndExpression) {
                 AndExpression andExpression = (AndExpression) whereExpression;
@@ -305,7 +306,7 @@ public class SqlAddHelper {
     }
 
     private static void setAggToFunction(Expression expression,
-                                         Map<String, String> fieldNameToAggregate) {
+            Map<String, String> fieldNameToAggregate) {
         if (!(expression instanceof ComparisonOperator)) {
             return;
         }

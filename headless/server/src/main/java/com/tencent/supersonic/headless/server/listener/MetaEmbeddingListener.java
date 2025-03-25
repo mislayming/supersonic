@@ -47,16 +47,14 @@ public class MetaEmbeddingListener {
         }
 
 
-        Map<String, ModelResp> modelMap = dataItems.stream().map(t -> Long.parseLong(t.getModelId()))
-                .distinct()
-                .parallel()
-                .map(t -> modelService.getModel(t))
-                .filter(Objects::nonNull) // 过滤掉可能的 null 值
+        Map<String, ModelResp> modelMap = dataItems.stream()
+                .map(t -> Long.parseLong(t.getModelId())).distinct().parallel()
+                .map(t -> modelService.getModel(t)).filter(Objects::nonNull) // 过滤掉可能的 null 值
                 .collect(Collectors.toMap(model -> model.getId().toString(), model -> model));
 
         dataItems.stream().forEach(t -> {
             ModelResp rsp = modelMap.get(t.getModelId());
-            if(rsp != null) {
+            if (rsp != null) {
                 t.setName(rsp.getName() + "_" + t.getName());
             }
         });

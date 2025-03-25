@@ -65,10 +65,10 @@ public class MetricServiceImpl extends ServiceImpl<MetricDOMapper, MetricDO>
     private ChatLayerService chatLayerService;
 
     public MetricServiceImpl(MetricRepository metricRepository, ModelService modelService,
-                             AliasGenerateHelper aliasGenerateHelper, CollectService collectService,
-                             DataSetService dataSetService, ApplicationEventPublisher eventPublisher,
-                             DimensionService dimensionService, TagMetaService tagMetaService,
-                             @Lazy ChatLayerService chatLayerService) {
+            AliasGenerateHelper aliasGenerateHelper, CollectService collectService,
+            DataSetService dataSetService, ApplicationEventPublisher eventPublisher,
+            DimensionService dimensionService, TagMetaService tagMetaService,
+            @Lazy ChatLayerService chatLayerService) {
         this.metricRepository = metricRepository;
         this.modelService = modelService;
         this.aliasGenerateHelper = aliasGenerateHelper;
@@ -383,7 +383,7 @@ public class MetricServiceImpl extends ServiceImpl<MetricDOMapper, MetricDO>
     }
 
     private boolean filterByField(List<MetricResp> metricResps, MetricResp metricResp,
-                                  List<String> fields, Set<MetricResp> metricRespFiltered) {
+            List<String> fields, Set<MetricResp> metricRespFiltered) {
         if (MetricDefineType.METRIC.equals(metricResp.getMetricDefineType())) {
             List<Long> ids = metricResp.getMetricDefineByMetricParams().getMetrics().stream()
                     .map(MetricParam::getId).collect(Collectors.toList());
@@ -420,8 +420,8 @@ public class MetricServiceImpl extends ServiceImpl<MetricDOMapper, MetricDO>
         metricFilter.setModelIds(Lists.newArrayList(modelId));
         List<MetricResp> metricResps = getMetrics(metricFilter);
         return metricResps.stream().filter(
-                        metricResp -> MetricDefineType.FIELD.equals(metricResp.getMetricDefineType())
-                                || MetricDefineType.MEASURE.equals(metricResp.getMetricDefineType()))
+                metricResp -> MetricDefineType.FIELD.equals(metricResp.getMetricDefineType())
+                        || MetricDefineType.MEASURE.equals(metricResp.getMetricDefineType()))
                 .collect(Collectors.toList());
     }
 
@@ -596,7 +596,7 @@ public class MetricServiceImpl extends ServiceImpl<MetricDOMapper, MetricDO>
         Map<Long, ModelResp> modelMap = modelService.getModelMap(modelFilter);
         if (!CollectionUtils.isEmpty(metricDOS)) {
             metricResps = metricDOS.stream().map(
-                            metricDO -> MetricConverter.convert2MetricResp(metricDO, modelMap, collect))
+                    metricDO -> MetricConverter.convert2MetricResp(metricDO, modelMap, collect))
                     .collect(Collectors.toList());
         }
         return metricResps;
@@ -651,7 +651,7 @@ public class MetricServiceImpl extends ServiceImpl<MetricDOMapper, MetricDO>
 
     @Override
     public void batchFillMetricDefaultAgg(List<MetricResp> metricResps,
-                                          List<ModelResp> modelResps) {
+            List<ModelResp> modelResps) {
         Map<Long, ModelResp> modelRespMap =
                 modelResps.stream().collect(Collectors.toMap(ModelResp::getId, m -> m));
         for (MetricResp metricResp : metricResps) {
@@ -805,7 +805,7 @@ public class MetricServiceImpl extends ServiceImpl<MetricDOMapper, MetricDO>
     }
 
     private Set<Long> getModelIds(Set<Long> modelIdsByDomainId, List<MetricResp> metricResps,
-                                  List<DimensionResp> dimensionResps) {
+            List<DimensionResp> dimensionResps) {
         Set<Long> result = new HashSet<>();
         if (org.apache.commons.collections.CollectionUtils.isNotEmpty(modelIdsByDomainId)) {
             result.addAll(modelIdsByDomainId);

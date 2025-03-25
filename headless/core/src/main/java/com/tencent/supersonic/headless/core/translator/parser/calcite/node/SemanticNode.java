@@ -79,40 +79,44 @@ public abstract class SemanticNode {
             throws Exception {
         SqlValidatorWithHints sqlValidatorWithHints = Configuration.getSqlValidatorWithHints(
                 scope.getValidator().getCatalogReader().getRootSchema(), engineType);
-        
+
         // 尝试直接解析表达式
         try {
-            SqlParser sqlParser = SqlParser.create(expression, Configuration.getParserConfig(engineType));
+            SqlParser sqlParser =
+                    SqlParser.create(expression, Configuration.getParserConfig(engineType));
             SqlNode sqlNode = sqlParser.parseExpression();
             scope.validateExpr(sqlNode);
             return sqlNode;
         } catch (Exception e) {
             log.debug("Failed to parse expression [{}] directly: {}", expression, e.getMessage());
-            
+
             // 如果直接解析失败，尝试处理可能的关键字问题
-            String processedExpression = processKeywordsInExpression(expression, sqlValidatorWithHints, engineType);
-            
+            String processedExpression =
+                    processKeywordsInExpression(expression, sqlValidatorWithHints, engineType);
+
             if (!expression.equals(processedExpression)) {
                 // 如果表达式被修改，尝试使用处理后的表达式解析
                 try {
                     log.debug("Trying with processed expression: {}", processedExpression);
-                    SqlParser sqlParser = SqlParser.create(processedExpression, Configuration.getParserConfig(engineType));
+                    SqlParser sqlParser = SqlParser.create(processedExpression,
+                            Configuration.getParserConfig(engineType));
                     SqlNode sqlNode = sqlParser.parseExpression();
                     scope.validateExpr(sqlNode);
                     return sqlNode;
                 } catch (Exception ex) {
-                    log.debug("Failed to parse processed expression [{}]: {}", processedExpression, ex.getMessage());
+                    log.debug("Failed to parse processed expression [{}]: {}", processedExpression,
+                            ex.getMessage());
                     // 如果处理后的表达式仍然失败，继续尝试原始方法
                 }
             }
-            
+
             // 尝试简单的字段处理方式
             // 检查是否包含 '.' 符号，表示是 alias.field 格式
             if (expression.contains(".")) {
                 String[] parts = expression.split("\\.", 2);
                 String alias = parts[0];
                 String field = parts[1];
-                
+
                 // 检查字段名是否是关键字
                 if (Configuration.getSqlAdvisor(sqlValidatorWithHints, engineType)
                         .getReservedAndKeyWords().contains(field.toUpperCase())) {
@@ -120,62 +124,67 @@ public abstract class SemanticNode {
                     SemanticSqlDialect dialect = SqlDialectFactory.getSqlDialect(engineType);
 
                     String quoteString = dialect.getIdentifierQuoteString();
-                    
+
                     // 确保引号字符串不为空，默认使用反引号
                     if (quoteString == null || quoteString.isEmpty()) {
                         quoteString = "`";
                     }
-                    
+
                     String escapedExpression = alias + "." + quoteString + field + quoteString;
-                    
+
                     // 尝试解析转义后的表达式
                     try {
-                        SqlParser sqlParser = SqlParser.create(escapedExpression, Configuration.getParserConfig(engineType));
+                        SqlParser sqlParser = SqlParser.create(escapedExpression,
+                                Configuration.getParserConfig(engineType));
                         SqlNode sqlNode = sqlParser.parseExpression();
                         scope.validateExpr(sqlNode);
                         return sqlNode;
                     } catch (Exception ex) {
-                        log.debug("Failed to parse escaped expression [{}]: {}", escapedExpression, ex.getMessage());
+                        log.debug("Failed to parse escaped expression [{}]: {}", escapedExpression,
+                                ex.getMessage());
                         // 如果仍然失败，继续尝试其他方法
                     }
                 }
-            } 
+            }
             // 检查整个表达式是否是关键字
-            else  {
+            else {
                 // 获取当前引擎的SQL方言和标识符引号
                 SemanticSqlDialect dialect = SqlDialectFactory.getSqlDialect(engineType);
                 String quoteString = dialect.getIdentifierQuoteString();
-                
+
                 // 确保引号字符串不为空，默认使用反引号
                 if (quoteString == null || quoteString.isEmpty()) {
                     quoteString = "`";
                 }
-                
+
                 String escapedExpression = quoteString + expression + quoteString;
-                
+
                 // 尝试解析转义后的表达式
                 try {
-                    SqlParser sqlParser = SqlParser.create(escapedExpression, Configuration.getParserConfig(engineType));
+                    SqlParser sqlParser = SqlParser.create(escapedExpression,
+                            Configuration.getParserConfig(engineType));
                     SqlNode sqlNode = sqlParser.parseExpression();
                     scope.validateExpr(sqlNode);
                     return sqlNode;
                 } catch (Exception ex) {
-                    log.debug("Failed to parse escaped expression [{}]: {}", escapedExpression, ex.getMessage());
+                    log.debug("Failed to parse escaped expression [{}]: {}", escapedExpression,
+                            ex.getMessage());
                     // 如果仍然失败，继续尝试其他方法
                 }
             }
-            
+
             // 如果所有尝试都失败，抛出原始异常
-            log.error("Failed to parse expression [{}] after all attempts: {}", expression, e.getMessage());
+            log.error("Failed to parse expression [{}] after all attempts: {}", expression,
+                    e.getMessage());
             throw e;
         }
     }
 
     /**
-     * 处理表达式中的关键字
-     * 这个方法使用正则表达式识别可能的标识符和字段引用，然后检查它们是否是关键字并添加适当的转义
+     * 处理表达式中的关键字 这个方法使用正则表达式识别可能的标识符和字段引用，然后检查它们是否是关键字并添加适当的转义
      */
-    private static String processKeywordsInExpression(String expression, SqlValidatorWithHints validator, EngineType engineType) {
+    private static String processKeywordsInExpression(String expression,
+            SqlValidatorWithHints validator, EngineType engineType) {
 
         // TODO 多半有 bug，expr 可能要结合指标表达式，但是现在暂时不管吧。。。。
 
@@ -183,170 +192,162 @@ public abstract class SemanticNode {
         if (StringUtils.isBlank(expression)) {
             return expression;
         }
-        
+
         // 获取关键字列表
-        Set<String> keywords = new HashSet<>(Configuration.getSqlAdvisor(validator, engineType).getReservedAndKeyWords());
-        
+        Set<String> keywords = new HashSet<>(
+                Configuration.getSqlAdvisor(validator, engineType).getReservedAndKeyWords());
+
         // 获取当前引擎的SQL方言和标识符引号
         SemanticSqlDialect dialect = SqlDialectFactory.getSqlDialect(engineType);
         String quoteString = dialect.getIdentifierQuoteString();
-        
+
         // 确保引号字符串不为空，默认使用反引号
         if (quoteString == null || quoteString.isEmpty()) {
             quoteString = "`";
         }
-        
+
         // 标记是否发生了任何变化
         boolean changed = false;
-        
+
         // 1. 处理 tableName.fieldName 形式的字段引用
         // 正则表达式用于捕获 identifier.identifier 格式
-        java.util.regex.Pattern tableFieldPattern = java.util.regex.Pattern.compile(
-                "([a-zA-Z0-9_]+)\\.([a-zA-Z0-9_]+)");
+        java.util.regex.Pattern tableFieldPattern =
+                java.util.regex.Pattern.compile("([a-zA-Z0-9_]+)\\.([a-zA-Z0-9_]+)");
         java.util.regex.Matcher tableFieldMatcher = tableFieldPattern.matcher(expression);
-        
+
         // 保存找到的匹配项及其位置
         List<int[]> matches = new ArrayList<>();
         while (tableFieldMatcher.find()) {
             String tableName = tableFieldMatcher.group(1);
             String fieldName = tableFieldMatcher.group(2);
-            
+
             // 检查字段名是否是关键字
             if (keywords.contains(fieldName.toUpperCase())) {
-                matches.add(new int[]{
-                    tableFieldMatcher.start(),
-                    tableFieldMatcher.end(),
-                    tableFieldMatcher.start(2),
-                    tableFieldMatcher.end(2)
-                });
+                matches.add(new int[] {tableFieldMatcher.start(), tableFieldMatcher.end(),
+                                tableFieldMatcher.start(2), tableFieldMatcher.end(2)});
             }
         }
-        
+
         // 从后往前处理匹配项，以避免位置偏移问题
         if (!matches.isEmpty()) {
             matches.sort((a, b) -> Integer.compare(b[0], a[0]));
-            
+
             // 应用转义
             String workingExpr = expression;
             for (int[] match : matches) {
                 int fieldStart = match[2];
                 int fieldEnd = match[3];
-                
+
                 String fieldName = workingExpr.substring(fieldStart, fieldEnd);
                 String escapedField = quoteString + fieldName + quoteString;
-                
-                workingExpr = workingExpr.substring(0, fieldStart) + 
-                              escapedField + 
-                              workingExpr.substring(fieldEnd);
-                
+
+                workingExpr = workingExpr.substring(0, fieldStart) + escapedField
+                        + workingExpr.substring(fieldEnd);
+
                 changed = true;
             }
-            
+
             // 如果有变更，返回处理后的表达式
             if (changed) {
                 return workingExpr;
             }
         }
-        
+
         // 2. 处理函数调用中的关键字字段
         // 函数模式，例如 FUNCTION(arg1, arg2, ...)
-        java.util.regex.Pattern funcPattern = java.util.regex.Pattern.compile(
-                "([a-zA-Z0-9_]+)\\s*\\(([^\\)]+)\\)");
+        java.util.regex.Pattern funcPattern =
+                java.util.regex.Pattern.compile("([a-zA-Z0-9_]+)\\s*\\(([^\\)]+)\\)");
         java.util.regex.Matcher funcMatcher = funcPattern.matcher(expression);
-        
+
         while (funcMatcher.find()) {
             String funcName = funcMatcher.group(1);
             String argsStr = funcMatcher.group(2);
-            
+
             // 递归处理函数参数
             String processedArgs = processKeywordsInExpression(argsStr, validator, engineType);
-            
+
             if (!argsStr.equals(processedArgs)) {
                 // 替换原始表达式中的函数参数
-                expression = expression.substring(0, funcMatcher.start(2)) + 
-                             processedArgs + 
-                             expression.substring(funcMatcher.end(2));
-                
+                expression = expression.substring(0, funcMatcher.start(2)) + processedArgs
+                        + expression.substring(funcMatcher.end(2));
+
                 changed = true;
-                
+
                 // 重新开始匹配，因为表达式已经改变
                 funcMatcher = funcPattern.matcher(expression);
             }
         }
-        
+
         // 3. 处理CASE表达式中的关键字
         // 这里只做一个简单的CASE WHEN pattern处理示例
         java.util.regex.Pattern casePattern = java.util.regex.Pattern.compile(
                 "CASE\\s+WHEN\\s+(.+?)\\s+THEN\\s+(.+?)(?:\\s+ELSE\\s+(.+?))?\\s+END",
                 java.util.regex.Pattern.CASE_INSENSITIVE);
         java.util.regex.Matcher caseMatcher = casePattern.matcher(expression);
-        
+
         while (caseMatcher.find()) {
             String whenCondition = caseMatcher.group(1);
             String thenExpr = caseMatcher.group(2);
             String elseExpr = caseMatcher.groupCount() > 2 ? caseMatcher.group(3) : null;
-            
+
             // 递归处理WHEN条件和THEN表达式
-            String processedWhen = processKeywordsInExpression(whenCondition, validator, engineType);
+            String processedWhen =
+                    processKeywordsInExpression(whenCondition, validator, engineType);
             String processedThen = processKeywordsInExpression(thenExpr, validator, engineType);
-            String processedElse = elseExpr != null ? 
-                    processKeywordsInExpression(elseExpr, validator, engineType) : null;
-            
-            boolean caseChanged = !whenCondition.equals(processedWhen) || 
-                                  !thenExpr.equals(processedThen) || 
-                                  (elseExpr != null && !elseExpr.equals(processedElse));
-            
+            String processedElse =
+                    elseExpr != null ? processKeywordsInExpression(elseExpr, validator, engineType)
+                            : null;
+
+            boolean caseChanged =
+                    !whenCondition.equals(processedWhen) || !thenExpr.equals(processedThen)
+                            || (elseExpr != null && !elseExpr.equals(processedElse));
+
             if (caseChanged) {
                 // 重建CASE表达式
                 StringBuilder newCaseExpr = new StringBuilder();
-                newCaseExpr.append("CASE WHEN ")
-                           .append(processedWhen)
-                           .append(" THEN ")
-                           .append(processedThen);
-                
+                newCaseExpr.append("CASE WHEN ").append(processedWhen).append(" THEN ")
+                        .append(processedThen);
+
                 if (processedElse != null) {
-                    newCaseExpr.append(" ELSE ")
-                               .append(processedElse);
+                    newCaseExpr.append(" ELSE ").append(processedElse);
                 }
-                
+
                 newCaseExpr.append(" END");
-                
+
                 // 替换原始表达式中的CASE表达式
-                expression = expression.substring(0, caseMatcher.start()) + 
-                             newCaseExpr.toString() + 
-                             expression.substring(caseMatcher.end());
-                
+                expression = expression.substring(0, caseMatcher.start()) + newCaseExpr.toString()
+                        + expression.substring(caseMatcher.end());
+
                 changed = true;
-                
+
                 // 重新开始匹配，因为表达式已经改变
                 caseMatcher = casePattern.matcher(expression);
             }
         }
-        
+
         // 4. 处理括号中的表达式
-        java.util.regex.Pattern parenPattern = java.util.regex.Pattern.compile(
-                "\\(([^\\(\\)]+)\\)");
+        java.util.regex.Pattern parenPattern =
+                java.util.regex.Pattern.compile("\\(([^\\(\\)]+)\\)");
         java.util.regex.Matcher parenMatcher = parenPattern.matcher(expression);
-        
+
         while (parenMatcher.find()) {
             String innerExpr = parenMatcher.group(1);
-            
+
             // 递归处理括号内的表达式
             String processedInner = processKeywordsInExpression(innerExpr, validator, engineType);
-            
+
             if (!innerExpr.equals(processedInner)) {
                 // 替换原始表达式中的括号内容
-                expression = expression.substring(0, parenMatcher.start(1)) + 
-                             processedInner + 
-                             expression.substring(parenMatcher.end(1));
-                
+                expression = expression.substring(0, parenMatcher.start(1)) + processedInner
+                        + expression.substring(parenMatcher.end(1));
+
                 changed = true;
-                
+
                 // 重新开始匹配，因为表达式已经改变
                 parenMatcher = parenPattern.matcher(expression);
             }
         }
-        
+
         // 如果没有找到任何需要处理的关键字，返回原始表达式
         return expression;
     }
@@ -361,8 +362,9 @@ public abstract class SemanticNode {
     public static String getSql(SqlNode sqlNode, EngineType engineType) {
 
         // 创建自定义SqlWriterConfig确保使用正确的引号
-        UnaryOperator<SqlWriterConfig> sqlWriterConfigUnaryOperator = (c) -> Configuration.getSqlWriterConfig(engineType);
-        
+        UnaryOperator<SqlWriterConfig> sqlWriterConfigUnaryOperator =
+                (c) -> Configuration.getSqlWriterConfig(engineType);
+
         // 获取SQL字符串
         return sqlNode.toSqlString(sqlWriterConfigUnaryOperator).getSql();
     }

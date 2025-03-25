@@ -16,7 +16,7 @@ public class MapFilter {
     public static void filter(ChatQueryContext chatQueryContext) {
         filterByDataSetId(chatQueryContext);
         filterByDetectWordLenLessThanOne(chatQueryContext);
-//        twoCharactersMustEqual(chatQueryContext); TODO
+        // twoCharactersMustEqual(chatQueryContext); TODO
         switch (chatQueryContext.getRequest().getQueryDataType()) {
             case TAG:
                 filterByQueryDataType(chatQueryContext, element -> !(element.getIsTag() > 0));
@@ -61,8 +61,9 @@ public class MapFilter {
             List<SchemaElementMatch> value = entry.getValue();
             if (!CollectionUtils.isEmpty(value)) {
                 // TODO 确认影响
-//                value.removeIf(schemaElementMatch -> StringUtils
-//                        .length(schemaElementMatch.getDetectWord()) <= 1 && !schemaElementMatch.isLlmMatched());
+                // value.removeIf(schemaElementMatch -> StringUtils
+                // .length(schemaElementMatch.getDetectWord()) <= 1 &&
+                // !schemaElementMatch.isLlmMatched());
             }
         }
     }
@@ -81,7 +82,7 @@ public class MapFilter {
     }
 
     public static void filterByQueryDataType(ChatQueryContext chatQueryContext,
-                                             Predicate<SchemaElement> needRemovePredicate) {
+            Predicate<SchemaElement> needRemovePredicate) {
         Map<Long, List<SchemaElementMatch>> dataSetElementMatches =
                 chatQueryContext.getMapInfo().getDataSetElementMatches();
         for (Map.Entry<Long, List<SchemaElementMatch>> entry : dataSetElementMatches.entrySet()) {
@@ -103,7 +104,7 @@ public class MapFilter {
                 chatQueryContext.getMapInfo().getDataSetElementMatches();
 
         for (Map.Entry<Long, List<SchemaElementMatch>> entry : dataSetElementMatches.entrySet()) {
-//            filterByExactMatch(entry.getValue()); TODO 目前看到没什么用，不同的模型存在相同的匹配词，只会返回第一个，影响匹配模型的评分。
+            // filterByExactMatch(entry.getValue()); TODO 目前看到没什么用，不同的模型存在相同的匹配词，只会返回第一个，影响匹配模型的评分。
             filterInExactMatch(entry.getValue());
         }
     }

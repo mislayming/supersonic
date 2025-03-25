@@ -183,7 +183,7 @@ public class HanlpHelper {
     public static String getHanlpPropertiesPath() throws FileNotFoundException {
         try {
             return ResourceUtils.getFile("classpath:hanlp.properties").getParent();
-        } catch (FileNotFoundException e) {
+        } catch (FileNotFoundException ignored) {
         }
         return null;
     }
@@ -247,18 +247,18 @@ public class HanlpHelper {
     }
 
     public static <T extends MapResult> boolean addLetterOriginal(List<T> mapResults, T mapResult,
-                                                                  CoreDictionary.Attribute attribute) {
+            CoreDictionary.Attribute attribute) {
         if (attribute == null) {
             return false;
         }
         boolean isAdd = false;
-        if (mapResult instanceof HanlpMapResult) {
-            HanlpMapResult hanlpMapResult = (HanlpMapResult) mapResult;
+        if (mapResult instanceof HanlpMapResult hanlpMapResult) {
             for (String nature : hanlpMapResult.getNatures()) {
                 String orig = attribute.getOriginal(Nature.fromString(nature));
                 if (orig != null) {
-                    MapResult addMapResult = new HanlpMapResult(orig, Arrays.asList(nature),
-                            hanlpMapResult.getDetectWord(), hanlpMapResult.getSimilarity());
+                    MapResult addMapResult =
+                            new HanlpMapResult(orig, Collections.singletonList(nature),
+                                    hanlpMapResult.getDetectWord(), hanlpMapResult.getSimilarity());
                     mapResults.add((T) addMapResult);
                     isAdd = true;
                 }
@@ -322,7 +322,7 @@ public class HanlpHelper {
     }
 
     public static List<S2Term> transform2ApiTerm(Term term,
-                                                 Map<Long, List<Long>> modelIdToDataSetIds) {
+            Map<Long, List<Long>> modelIdToDataSetIds) {
         List<S2Term> s2Terms = Lists.newArrayList();
         List<String> natures = NatureHelper.changeModel2DataSet(String.valueOf(term.getNature()),
                 modelIdToDataSetIds);

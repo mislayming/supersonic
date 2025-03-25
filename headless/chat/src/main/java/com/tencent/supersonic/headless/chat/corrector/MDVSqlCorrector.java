@@ -31,10 +31,11 @@ public class MDVSqlCorrector extends BaseSemanticCorrector {
     }
 
     /***
-     * 补齐Group By的字段，在SELECT中出现的字段，但是没有聚合，需要在GROUP BY中补齐。
-     * 例子：SELECT 招标单, 招标单名称 FROM 招标模型 GROUP BY 招标单 HAVING COUNT(DISTINCT 邀请的供应商) < 3
+     * 补齐Group By的字段，在SELECT中出现的字段，但是没有聚合，需要在GROUP BY中补齐。 例子：SELECT 招标单, 招标单名称 FROM 招标模型 GROUP BY
+     * 招标单 HAVING COUNT(DISTINCT 邀请的供应商) < 3
      */
-    private void supplementGroupByFields(ChatQueryContext chatQueryContext, SemanticParseInfo semanticParseInfo) {
+    private void supplementGroupByFields(ChatQueryContext chatQueryContext,
+            SemanticParseInfo semanticParseInfo) {
         String sql = semanticParseInfo.getSqlInfo().getCorrectedS2SQL();
         Select select = SqlSelectHelper.getSelect(sql);
         if (select instanceof PlainSelect) {
@@ -43,7 +44,8 @@ public class MDVSqlCorrector extends BaseSemanticCorrector {
             if (groupBy != null) {
                 ExpressionList groupByExpressionList = groupBy.getGroupByExpressionList();
                 Set<String> existsColumnNames = (Set<String>) groupByExpressionList.stream()
-                        .filter(v -> v instanceof Column).map(v -> ((Column) v).getColumnName()).collect(Collectors.toSet());
+                        .filter(v -> v instanceof Column).map(v -> ((Column) v).getColumnName())
+                        .collect(Collectors.toSet());
                 List<SelectItem<?>> selectItems = plainSelect.getSelectItems();
                 for (SelectItem<?> selectItem : selectItems) {
                     if (selectItem.getExpression() instanceof Column) {

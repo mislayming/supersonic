@@ -2,7 +2,6 @@ package com.tencent.supersonic.headless.chat.mapper;
 
 import com.tencent.supersonic.headless.api.pojo.SchemaElement;
 import com.tencent.supersonic.headless.api.pojo.SchemaElementMatch;
-import com.tencent.supersonic.headless.api.pojo.response.S2Term;
 import com.tencent.supersonic.headless.chat.ChatQueryContext;
 import com.tencent.supersonic.headless.chat.knowledge.DatabaseMapResult;
 import com.tencent.supersonic.headless.chat.utils.EditDistanceUtils;
@@ -27,13 +26,14 @@ import java.util.stream.Collectors;
 @Slf4j
 public class DatabaseMatchStrategy extends SingleMatchStrategy<DatabaseMapResult> {
 
-    private ThreadLocal<List<SchemaElement>> allElements = ThreadLocal.withInitial(ArrayList::new);
+    private final ThreadLocal<List<SchemaElement>> allElements =
+            ThreadLocal.withInitial(ArrayList::new);
 
     @Override
     public Map<MatchText, List<DatabaseMapResult>> match(ChatQueryContext chatQueryContext,
-            List<S2Term> terms, Set<Long> detectDataSetIds) {
+            Set<Long> detectDataSetIds) {
         allElements.set(getSchemaElements(chatQueryContext));
-        return super.match(chatQueryContext, terms, detectDataSetIds);
+        return super.match(chatQueryContext, detectDataSetIds);
     }
 
     public List<DatabaseMapResult> detectByStep(ChatQueryContext chatQueryContext,
@@ -42,7 +42,7 @@ public class DatabaseMatchStrategy extends SingleMatchStrategy<DatabaseMapResult
             return new ArrayList<>();
         }
 
-        Double metricDimensionThresholdConfig = getThreshold(chatQueryContext);
+        double metricDimensionThresholdConfig = getThreshold(chatQueryContext);
         Map<String, Set<SchemaElement>> nameToItems = getNameToItems(allElements.get());
         List<DatabaseMapResult> results = new ArrayList<>();
         for (Entry<String, Set<SchemaElement>> entry : nameToItems.entrySet()) {
@@ -77,22 +77,23 @@ public class DatabaseMatchStrategy extends SingleMatchStrategy<DatabaseMapResult
     }
 
     private Double getThreshold(ChatQueryContext chatQueryContext) {
-        Double threshold =
-                Double.valueOf(mapperConfig.getParameterValue(MapperConfig.MAPPER_NAME_THRESHOLD));
-        Double minThreshold = Double
-                .valueOf(mapperConfig.getParameterValue(MapperConfig.MAPPER_NAME_THRESHOLD_MIN));
+        double threshold = Double
+                .parseDouble(mapperConfig.getParameterValue(MapperConfig.MAPPER_NAME_THRESHOLD));
+        double minThreshold = Double.parseDouble(
+                mapperConfig.getParameterValue(MapperConfig.MAPPER_NAME_THRESHOLD_MIN));
 
         Map<Long, List<SchemaElementMatch>> modelElementMatches =
                 chatQueryContext.getMapInfo().getDataSetElementMatches();
 
         boolean existElement = modelElementMatches.entrySet().stream()
-                .anyMatch(entry -> entry.getValue().size() >= 1);
+                .anyMatch(entry -> !entry.getValue().isEmpty());
 
         if (!existElement) {
             threshold = threshold / 2;
             log.debug("ModelElementMatches:{},not exist Element threshold reduce by half:{}",
                     modelElementMatches, threshold);
         }
+
         return getThreshold(threshold, minThreshold,
                 chatQueryContext.getRequest().getMapModeEnum());
     }

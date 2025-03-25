@@ -23,13 +23,8 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 /***
- * 自定义KeywordMapper，度量维度匹配优先级:
- * 1、匹配维度值所对应的维度。
- * 2、Hanlp、Database匹配到的度量和维度。
- * 3、
- * 其他:考虑不同分词器，中英文。
- * 什么场景需要调用大模型：1、存在相似度比较高，无法确认使用哪个度量维度？
- *                     2、
+ * 自定义KeywordMapper，度量维度匹配优先级: 1、匹配维度值所对应的维度。 2、Hanlp、Database匹配到的度量和维度。 3、 其他:考虑不同分词器，中英文。
+ * 什么场景需要调用大模型：1、存在相似度比较高，无法确认使用哪个度量维度？ 2、
  */
 @Slf4j
 public class MDVKeywordMapper extends BaseMapper {
@@ -42,8 +37,10 @@ public class MDVKeywordMapper extends BaseMapper {
         String queryText = chatQueryContext.getRequest().getQueryText();
 
         // 1. hanlpDict Match
-        List<S2Term> terms = HanlpHelper.getTerms(queryText, chatQueryContext.getModelIdToDataSetIds());
-        HanlpDictMatchStrategy hanlpMatchStrategy = ContextUtils.getBean(HanlpDictMatchStrategy.class);
+        // List<S2Term> terms = HanlpHelper.getTerms(queryText,
+        // chatQueryContext.getModelIdToDataSetIds());
+        HanlpDictMatchStrategy hanlpMatchStrategy =
+                ContextUtils.getBean(HanlpDictMatchStrategy.class);
         List<HanlpMapResult> hanlpMatchResults = getMatches(chatQueryContext, hanlpMatchStrategy);
 
         hanlpMatchResults = hanlpMatchResults.stream().filter(v -> {
@@ -57,16 +54,20 @@ public class MDVKeywordMapper extends BaseMapper {
             return true;
         }).collect(Collectors.toList());
 
-        convertMapResultToMapInfo(hanlpMatchResults, chatQueryContext, terms);
+        convertMapResultToMapInfo(hanlpMatchResults, chatQueryContext);
 
         // 2. database Match
-        DatabaseMatchStrategy databaseMatchStrategy = ContextUtils.getBean(DatabaseMatchStrategy.class);
-        List<DatabaseMapResult> databaseMatchResults = getMatches(chatQueryContext, databaseMatchStrategy);
+        DatabaseMatchStrategy databaseMatchStrategy =
+                ContextUtils.getBean(DatabaseMatchStrategy.class);
+        List<DatabaseMapResult> databaseMatchResults =
+                getMatches(chatQueryContext, databaseMatchStrategy);
         convertMapResultToMapInfo(chatQueryContext, databaseMatchResults);
 
         // 3. embedding Match
-        EmbeddingMatchStrategy embeddingMatchStrategy = ContextUtils.getBean(EmbeddingMatchStrategy.class);
-        List<EmbeddingResult> embeddingMatchResults = getMatches(chatQueryContext, embeddingMatchStrategy);
+        EmbeddingMatchStrategy embeddingMatchStrategy =
+                ContextUtils.getBean(EmbeddingMatchStrategy.class);
+        List<EmbeddingResult> embeddingMatchResults =
+                getMatches(chatQueryContext, embeddingMatchStrategy);
         convertEmbeddingMapResultToMapInfo(chatQueryContext, embeddingMatchResults);
         // 4. print Match
         hanlpMatchResults.forEach(this::printMapResultInfo);
@@ -75,15 +76,15 @@ public class MDVKeywordMapper extends BaseMapper {
     }
 
     private void convertMapResultToMapInfo(List<HanlpMapResult> mapResults,
-                                           ChatQueryContext chatQueryContext, List<S2Term> terms) {
+            ChatQueryContext chatQueryContext) {
         if (CollectionUtils.isEmpty(mapResults)) {
             return;
         }
 
         HanlpHelper.transLetterOriginal(mapResults);
-        Map<String, Long> wordNatureToFrequency =
-                terms.stream().collect(Collectors.toMap(term -> term.getWord() + term.getNature(),
-                        term -> Long.valueOf(term.getFrequency()), (value1, value2) -> value2));
+        // Map<String, Long> wordNatureToFrequency =
+        // terms.stream().collect(Collectors.toMap(term -> term.getWord() + term.getNature(),
+        // term -> Long.valueOf(term.getFrequency()), (value1, value2) -> value2));
 
         for (HanlpMapResult hanlpMapResult : mapResults) {
             for (String nature : hanlpMapResult.getNatures()) {
@@ -102,7 +103,8 @@ public class MDVKeywordMapper extends BaseMapper {
                     continue;
                 }
 
-                Long frequency = wordNatureToFrequency.get(hanlpMapResult.getName() + nature);
+                // Long frequency = wordNatureToFrequency.get(hanlpMapResult.getName() + nature);
+                Long frequency = 1000L;
                 SchemaElementMatch schemaElementMatch = SchemaElementMatch.builder()
                         .element(element).frequency(frequency).word(hanlpMapResult.getName())
                         .similarity(hanlpMapResult.getSimilarity())
@@ -133,7 +135,8 @@ public class MDVKeywordMapper extends BaseMapper {
         }
     }
 
-    private void convertMapResultToMapInfo(ChatQueryContext chatQueryContext, List<DatabaseMapResult> mapResults) {
+    private void convertMapResultToMapInfo(ChatQueryContext chatQueryContext,
+            List<DatabaseMapResult> mapResults) {
         for (DatabaseMapResult match : mapResults) {
             SchemaElement schemaElement = match.getSchemaElement();
             Set<Long> regElementSet =
@@ -153,7 +156,8 @@ public class MDVKeywordMapper extends BaseMapper {
         }
     }
 
-    private void convertEmbeddingMapResultToMapInfo(ChatQueryContext chatQueryContext, List<EmbeddingResult> matchResults) {
+    private void convertEmbeddingMapResultToMapInfo(ChatQueryContext chatQueryContext,
+            List<EmbeddingResult> matchResults) {
         // Process match results
         HanlpHelper.transLetterOriginal(matchResults);
 
@@ -176,7 +180,8 @@ public class MDVKeywordMapper extends BaseMapper {
                 continue;
             }
 
-            Set<Long> regElementSet = getRegElementSet(chatQueryContext.getMapInfo(), schemaElement);
+            Set<Long> regElementSet =
+                    getRegElementSet(chatQueryContext.getMapInfo(), schemaElement);
             if (regElementSet.contains(schemaElement.getId())) {
                 continue;
             }
@@ -186,8 +191,7 @@ public class MDVKeywordMapper extends BaseMapper {
             SchemaElementMatch schemaElementMatch = SchemaElementMatch.builder()
                     .element(schemaElement).frequency(BaseWordBuilder.DEFAULT_FREQUENCY)
                     .word(matchResult.getName()).similarity(matchResult.getSimilarity())
-                    .detectWord(matchResult.getDetectWord())
-                    .build();
+                    .detectWord(matchResult.getDetectWord()).build();
 
             schemaElementMatch.setLlmMatched(matchResult.isLlmMatched());
 
@@ -203,8 +207,8 @@ public class MDVKeywordMapper extends BaseMapper {
             return new HashSet<>();
         }
         return elements.stream().filter(
-                        elementMatch -> SchemaElementType.METRIC.equals(elementMatch.getElement().getType())
-                                || SchemaElementType.DIMENSION.equals(elementMatch.getElement().getType()))
+                elementMatch -> SchemaElementType.METRIC.equals(elementMatch.getElement().getType())
+                        || SchemaElementType.DIMENSION.equals(elementMatch.getElement().getType()))
                 .map(elementMatch -> elementMatch.getElement().getId()).collect(Collectors.toSet());
     }
 
@@ -214,9 +218,13 @@ public class MDVKeywordMapper extends BaseMapper {
                 try {
                     SchemaElementType elementType = NatureHelper.convertToElementType(nature);
                     // 有些场景是这样：_146_1195dimension
-                    Long id = NatureHelper.getElementID(nature.replace("dimension", "").replace("metric", ""));
-                    log.info("match=[hanlp] model=[{}] id=[{}] type=[{}] name=[{}] detectWord=[{}] similarity=[{}]",
-                            "", id, elementType != null ? elementType.name() : "", hanlpMatchResult.getName(), hanlpMatchResult.getDetectWord(), hanlpMatchResult.getSimilarity());
+                    Long id = NatureHelper
+                            .getElementID(nature.replace("dimension", "").replace("metric", ""));
+                    log.info(
+                            "match=[hanlp] model=[{}] id=[{}] type=[{}] name=[{}] detectWord=[{}] similarity=[{}]",
+                            "", id, elementType != null ? elementType.name() : "",
+                            hanlpMatchResult.getName(), hanlpMatchResult.getDetectWord(),
+                            hanlpMatchResult.getSimilarity());
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
@@ -226,20 +234,27 @@ public class MDVKeywordMapper extends BaseMapper {
 
         if (mapResult instanceof DatabaseMapResult databaseMapResult) {
             SchemaElement schemaElement = databaseMapResult.getSchemaElement();
-            log.info("match=[database] model=[{}] id=[{}] type=[{}] name=[{}] detectWord=[{}] similarity=[{}] dataSetName=[{}]",
+            log.info(
+                    "match=[database] model=[{}] id=[{}] type=[{}] name=[{}] detectWord=[{}] similarity=[{}] dataSetName=[{}]",
                     schemaElement.getModel(), schemaElement.getId(), schemaElement.getType().name(),
-                    databaseMapResult.getName(), databaseMapResult.getDetectWord(), databaseMapResult.getSimilarity(), schemaElement.getDataSetName());
+                    databaseMapResult.getName(), databaseMapResult.getDetectWord(),
+                    databaseMapResult.getSimilarity(), schemaElement.getDataSetName());
             return;
         }
 
         if (mapResult instanceof EmbeddingResult matchResult) {
             Map<String, String> metadata = matchResult.getMetadata();
             // embedding的modelId和id多了_字符的前缀
-            String modelId = metadata.get("modelId") != null ? String.valueOf(metadata.get("modelId")).replace("_", "") : "";
-            String id = metadata.get("id") != null ? String.valueOf(metadata.get("id")).replace("_", "") : "";
-            log.info("match=[embedding] model=[{}] id=[{}] type=[{}] name=[{}] detectWord=[{}] similarity=[{}]",
-                    modelId, id, metadata.get("type"),
-                    matchResult.getName(), matchResult.getDetectWord(), matchResult.getSimilarity());
+            String modelId = metadata.get("modelId") != null
+                    ? String.valueOf(metadata.get("modelId")).replace("_", "")
+                    : "";
+            String id =
+                    metadata.get("id") != null ? String.valueOf(metadata.get("id")).replace("_", "")
+                            : "";
+            log.info(
+                    "match=[embedding] model=[{}] id=[{}] type=[{}] name=[{}] detectWord=[{}] similarity=[{}]",
+                    modelId, id, metadata.get("type"), matchResult.getName(),
+                    matchResult.getDetectWord(), matchResult.getSimilarity());
             return;
         }
     }

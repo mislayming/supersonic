@@ -1,6 +1,7 @@
 package com.tencent.supersonic.demo;
 
 import com.google.common.collect.Lists;
+import com.hankcs.hanlp.HanLP;
 import com.tencent.supersonic.auth.api.authorization.service.AuthService;
 import com.tencent.supersonic.chat.api.pojo.request.ChatParseReq;
 import com.tencent.supersonic.chat.server.service.AgentService;
@@ -26,6 +27,7 @@ import com.tencent.supersonic.headless.api.pojo.response.DatabaseResp;
 import com.tencent.supersonic.headless.api.pojo.response.DimensionResp;
 import com.tencent.supersonic.headless.api.pojo.response.MetricResp;
 import com.tencent.supersonic.headless.api.pojo.response.ModelResp;
+import com.tencent.supersonic.headless.chat.knowledge.helper.HanlpHelper;
 import com.tencent.supersonic.headless.server.service.DataSetService;
 import com.tencent.supersonic.headless.server.service.DatabaseService;
 import com.tencent.supersonic.headless.server.service.DictConfService;
@@ -137,7 +139,7 @@ public abstract class S2BaseDemo implements CommandLineRunner {
         } else {
 
             return createQWenChatModel();
-//            return createKIMIChatModel();
+            // return createKIMIChatModel();
         }
     }
 
@@ -163,8 +165,10 @@ public abstract class S2BaseDemo implements CommandLineRunner {
         chatModel.setName("kimiChat");
         chatModel.setDescription("kimi demo");
 
-        ChatModelConfig config = ChatModelConfig.builder().provider("OPEN_AI").baseUrl("https://api.moonshot.cn/v1")
-                .apiKey("sk-BGIb43D9i2rrn3aa69SkkE9KOG02SX0vWQL3AbbsOg1T5hQT").modelName("moonshot-v1-8k").temperature(0.0).timeOut(60L).build();
+        ChatModelConfig config =
+                ChatModelConfig.builder().provider("OPEN_AI").baseUrl("https://api.moonshot.cn/v1")
+                        .apiKey("sk-BGIb43D9i2rrn3aa69SkkE9KOG02SX0vWQL3AbbsOg1T5hQT")
+                        .modelName("moonshot-v1-8k").temperature(0.0).timeOut(60L).build();
         chatModel.setConfig(config);
         return chatModelService.createChatModel(chatModel, defaultUser);
     }
@@ -174,8 +178,10 @@ public abstract class S2BaseDemo implements CommandLineRunner {
         chatModel.setName("qwen2.5-turbo");
         chatModel.setDescription("qwen2.5-turbo");
 
-        ChatModelConfig config = ChatModelConfig.builder().provider("OPEN_AI").baseUrl("https://dashscope.aliyuncs.com/compatible-mode/v1")
-                .apiKey("sk-dcd252aab98742d1945b4e88c78c7ce4").modelName("qwen-plus").temperature(0.0).timeOut(60L).build();
+        ChatModelConfig config = ChatModelConfig.builder().provider("OPEN_AI")
+                .baseUrl("https://dashscope.aliyuncs.com/compatible-mode/v1")
+                .apiKey("sk-dcd252aab98742d1945b4e88c78c7ce4").modelName("qwen-plus")
+                .temperature(0.0).timeOut(60L).build();
         chatModel.setConfig(config);
         return chatModelService.createChatModel(chatModel, defaultUser);
     }
@@ -236,5 +242,13 @@ public abstract class S2BaseDemo implements CommandLineRunner {
 
     protected void loadDictWord() {
         dictWordService.loadDictWord();
+    }
+
+    public static void main(String[] args) {
+
+        // System.out.printf(S2BaseDemo.class.get);
+        System.out.printf(HanlpHelper.getSegment().seg("各公司员工都有多少人\n").toString());
+        System.out.printf("\n\n");
+        System.out.printf(HanlpHelper.getSegment().seg("How many TV Channel using language English?\n").toString());
     }
 }

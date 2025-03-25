@@ -1,6 +1,10 @@
 package com.tencent.supersonic.common.calcite;
 
+import com.tencent.supersonic.common.pojo.enums.EngineType;
 import lombok.extern.slf4j.Slf4j;
+import net.sf.jsqlparser.expression.Alias;
+import net.sf.jsqlparser.expression.CastExpression;
+import net.sf.jsqlparser.expression.Expression;
 import net.sf.jsqlparser.parser.CCJSqlParser;
 import net.sf.jsqlparser.parser.CCJSqlParserDefaultVisitor;
 import net.sf.jsqlparser.parser.CCJSqlParserTreeConstants;
@@ -10,10 +14,6 @@ import net.sf.jsqlparser.schema.Column;
 import net.sf.jsqlparser.schema.Table;
 import net.sf.jsqlparser.statement.Statement;
 import net.sf.jsqlparser.statement.select.SelectItem;
-import net.sf.jsqlparser.expression.Expression;
-import net.sf.jsqlparser.expression.Alias;
-import net.sf.jsqlparser.expression.CastExpression;
-import com.tencent.supersonic.common.pojo.enums.EngineType;
 import org.apache.calcite.sql.parser.impl.SqlParserImplConstants;
 
 import java.util.Arrays;
@@ -23,16 +23,14 @@ import java.util.stream.Collectors;
 import static net.sf.jsqlparser.parser.CCJSqlParserTreeConstants.*;
 
 /**
- * SQL标识符引号处理工具类
- * 用于自动为SQL中的关键字添加适当的引号
+ * SQL标识符引号处理工具类 用于自动为SQL中的关键字添加适当的引号
  */
 @Slf4j
 public class SqlIdentifierQuoteUtil {
 
     /** SQL关键字集合，从Calcite解析器中提取 */
     private static final Set<String> KEYWORDS = Arrays.stream(SqlParserImplConstants.tokenImage)
-            .map(v -> v.replace("\"", ""))
-            .collect(Collectors.toSet());
+            .map(v -> v.replace("\"", "")).collect(Collectors.toSet());
 
     public static String addQuotesToSql(String sql) {
         return addQuotesToSql(sql, EngineType.POSTGRESQL);
@@ -50,7 +48,7 @@ public class SqlIdentifierQuoteUtil {
         String quoteChar = SqlDialectFactory.getSqlDialect(engineType).getIdentifierQuoteString();
         return addQuotesToSql(sql, quoteChar);
     }
-    
+
     /**
      * 为SQL中的关键字添加指定的引号字符
      * 
@@ -62,7 +60,7 @@ public class SqlIdentifierQuoteUtil {
         if (sql == null || sql.isEmpty()) {
             return sql;
         }
-        
+
         try {
             CCJSqlParser parser = CCJSqlParserUtil.newParser(sql);
             Statement stmt = parser.Statement();
@@ -103,12 +101,12 @@ public class SqlIdentifierQuoteUtil {
         if (name == null || name.isEmpty()) {
             return name;
         }
-        
+
         // 检查名称是否已经被引号包围
         if (name.startsWith(quoteChar) && name.endsWith(quoteChar)) {
             return name; // 已经有引号，不再添加
         }
-        
+
         if (KEYWORDS.contains(name.toUpperCase())) {
             return quoteChar + name + quoteChar;
         }
@@ -138,10 +136,12 @@ public class SqlIdentifierQuoteUtil {
 
     /**
      * 向后兼容的方法
+     * 
      * @deprecated 使用 {@link #addQuotesToSql(String, EngineType)} 替代
      */
     @Deprecated
     public static String correctSQL(String sql) {
-        return addQuotesToSql(sql, SqlDialectFactory.getSqlDialect(EngineType.POSTGRESQL).getIdentifierQuoteString());
+        return addQuotesToSql(sql,
+                SqlDialectFactory.getSqlDialect(EngineType.POSTGRESQL).getIdentifierQuoteString());
     }
 }

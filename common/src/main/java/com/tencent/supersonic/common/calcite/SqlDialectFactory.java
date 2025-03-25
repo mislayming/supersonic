@@ -12,32 +12,23 @@ import java.util.Objects;
 
 public class SqlDialectFactory {
 
-    public static final Context DEFAULT_CONTEXT = SqlDialect.EMPTY_CONTEXT
-            .withDatabaseProduct(DatabaseProduct.BIG_QUERY)
-            .withLiteralQuoteString("'")
-            .withLiteralEscapedQuoteString("''")
-            .withIdentifierQuoteString("`")
-            .withUnquotedCasing(Casing.UNCHANGED)
-            .withQuotedCasing(Casing.UNCHANGED)
-            .withCaseSensitive(false);
+    public static final Context DEFAULT_CONTEXT =
+            SqlDialect.EMPTY_CONTEXT.withDatabaseProduct(DatabaseProduct.BIG_QUERY)
+                    .withLiteralQuoteString("'").withLiteralEscapedQuoteString("''")
+                    .withIdentifierQuoteString("`").withUnquotedCasing(Casing.UNCHANGED)
+                    .withQuotedCasing(Casing.UNCHANGED).withCaseSensitive(false);
 
-    public static final Context POSTGRESQL_CONTEXT = SqlDialect.EMPTY_CONTEXT
-            .withDatabaseProduct(DatabaseProduct.POSTGRESQL)
-            .withLiteralQuoteString("'")
-            .withLiteralEscapedQuoteString("''")
-            .withIdentifierQuoteString("`")
-            .withUnquotedCasing(Casing.UNCHANGED)
-            .withQuotedCasing(Casing.UNCHANGED)
-            .withCaseSensitive(false);
+    public static final Context POSTGRESQL_CONTEXT =
+            SqlDialect.EMPTY_CONTEXT.withDatabaseProduct(DatabaseProduct.POSTGRESQL)
+                    .withLiteralQuoteString("'").withLiteralEscapedQuoteString("''")
+                    .withIdentifierQuoteString("`").withUnquotedCasing(Casing.UNCHANGED)
+                    .withQuotedCasing(Casing.UNCHANGED).withCaseSensitive(false);
 
-    public static final Context HANADB_CONTEXT = SqlDialect.EMPTY_CONTEXT
-            .withDatabaseProduct(DatabaseProduct.BIG_QUERY)
-            .withLiteralQuoteString("'")
-            .withIdentifierQuoteString("\"")
-            .withLiteralEscapedQuoteString("''")
-            .withUnquotedCasing(Casing.UNCHANGED)
-            .withQuotedCasing(Casing.UNCHANGED)
-            .withCaseSensitive(true);
+    public static final Context HANADB_CONTEXT =
+            SqlDialect.EMPTY_CONTEXT.withDatabaseProduct(DatabaseProduct.BIG_QUERY)
+                    .withLiteralQuoteString("'").withIdentifierQuoteString("\"")
+                    .withLiteralEscapedQuoteString("''").withUnquotedCasing(Casing.UNCHANGED)
+                    .withQuotedCasing(Casing.UNCHANGED).withCaseSensitive(true);
 
     private static Map<EngineType, SemanticSqlDialect> sqlDialectMap;
 

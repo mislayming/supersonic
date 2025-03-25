@@ -7,6 +7,8 @@ import com.tencent.supersonic.headless.chat.knowledge.MetaEmbeddingService;
 import dev.langchain4j.store.embedding.Retrieval;
 import dev.langchain4j.store.embedding.RetrieveQuery;
 import dev.langchain4j.store.embedding.RetrieveQueryResult;
+import lombok.Builder;
+import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -43,48 +45,40 @@ public class EmbeddingMatchStrategy extends BatchMatchStrategy<EmbeddingResult> 
             Set<Long> detectDataSetIds, Set<String> detectSegments) {
         Set<EmbeddingResult> results = ConcurrentHashMap.newKeySet();
         int embeddingMapperBatch = Integer
-                .valueOf(mapperConfig.getParameterValue(MapperConfig.EMBEDDING_MAPPER_BATCH));
+                .parseInt(mapperConfig.getParameterValue(MapperConfig.EMBEDDING_MAPPER_BATCH));
 
-        List<String> queryTextsList =
-                detectSegments.stream().map(detectSegment -> detectSegment.trim())
-                        .filter(detectSegment -> StringUtils.isNotBlank(detectSegment))
-                        .collect(Collectors.toList());
+        List<String> queryTextsList = detectSegments.stream().map(String::trim)
+                .filter(StringUtils::isNotBlank).collect(Collectors.toList());
 
         List<List<String>> queryTextsSubList =
                 Lists.partition(queryTextsList, embeddingMapperBatch);
 
-        List<Callable<Void>> tasks = new ArrayList<>();
-        for (List<String> queryTextsSub : queryTextsSubList) {
-            tasks.add(createTask(chatQueryContext, detectDataSetIds, queryTextsSub, results));
-        }
-        executeTasks(tasks);
-        return new ArrayList<>(results);
-    }
-
-    private Callable<Void> createTask(ChatQueryContext chatQueryContext, Set<Long> detectDataSetIds,
-            List<String> queryTextsSub, Set<EmbeddingResult> results) {
-        return () -> {
+        queryTextsSubList.stream().parallel().forEach(queryTextList -> {
             List<EmbeddingResult> oneRoundResults =
-                    detectByQueryTextsSub(detectDataSetIds, queryTextsSub, chatQueryContext);
+                    detectByQueryTextsSub(detectDataSetIds, queryTextList, chatQueryContext);
             synchronized (results) {
                 selectResultInOneRound(results, oneRoundResults);
             }
-            return null;
-        };
+        });
+
+        return new ArrayList<>(results);
     }
+
+
 
     private List<EmbeddingResult> detectByQueryTextsSub(Set<Long> detectDataSetIds,
             List<String> queryTextsSub, ChatQueryContext chatQueryContext) {
+
         Map<Long, List<Long>> modelIdToDataSetIds = chatQueryContext.getModelIdToDataSetIds();
         double threshold =
-                Double.valueOf(mapperConfig.getParameterValue(EMBEDDING_MAPPER_THRESHOLD));
+                Double.parseDouble(mapperConfig.getParameterValue(EMBEDDING_MAPPER_THRESHOLD));
 
         // step1. build query params
         RetrieveQuery retrieveQuery = RetrieveQuery.builder().queryTextsList(queryTextsSub).build();
 
         // step2. retrieveQuery by detectSegment
         int embeddingNumber =
-                Integer.valueOf(mapperConfig.getParameterValue(EMBEDDING_MAPPER_NUMBER));
+                Integer.parseInt(mapperConfig.getParameterValue(EMBEDDING_MAPPER_NUMBER));
         List<RetrieveQueryResult> retrieveQueryResults = metaEmbeddingService.retrieveQuery(
                 retrieveQuery, embeddingNumber, modelIdToDataSetIds, detectDataSetIds);
 
@@ -92,7 +86,7 @@ public class EmbeddingMatchStrategy extends BatchMatchStrategy<EmbeddingResult> 
             return new ArrayList<>();
         }
         // step3. build EmbeddingResults
-        List<EmbeddingResult> collect = retrieveQueryResults.stream().map(retrieveQueryResult -> {
+        List<EmbeddingResult> collect = retrieveQueryResults.stream().peek(retrieveQueryResult -> {
             List<Retrieval> retrievals = retrieveQueryResult.getRetrieval();
             if (CollectionUtils.isNotEmpty(retrievals)) {
                 retrievals.removeIf(retrieval -> {
@@ -102,7 +96,6 @@ public class EmbeddingMatchStrategy extends BatchMatchStrategy<EmbeddingResult> 
                     return false;
                 });
             }
-            return retrieveQueryResult;
         }).filter(retrieveQueryResult -> CollectionUtils
                 .isNotEmpty(retrieveQueryResult.getRetrieval()))
                 .flatMap(retrieveQueryResult -> retrieveQueryResult.getRetrieval().stream()
@@ -117,11 +110,11 @@ public class EmbeddingMatchStrategy extends BatchMatchStrategy<EmbeddingResult> 
                             embeddingResult.setMetadata(convertedMap);
                             return embeddingResult;
                         }))
-                .collect(Collectors.toList());
+                .toList();
 
         // step4. select mapResul in one round
         int embeddingRoundNumber =
-                Integer.valueOf(mapperConfig.getParameterValue(EMBEDDING_MAPPER_ROUND_NUMBER));
+                Integer.parseInt(mapperConfig.getParameterValue(EMBEDDING_MAPPER_ROUND_NUMBER));
         int roundNumber = embeddingRoundNumber * queryTextsSub.size();
         return collect.stream().sorted(Comparator.comparingDouble(EmbeddingResult::getSimilarity))
                 .limit(roundNumber).collect(Collectors.toList());

@@ -42,7 +42,8 @@ public class AzureModelFactory implements ModelFactory, InitializingBean {
         String proxyHost = env.getProperty("integration.supersonic.http-proxy-host");
         String proxyPort = env.getProperty("integration.supersonic.http-proxy-port");
         if (StringUtils.isNotBlank(proxyHost) && StringUtils.isNotBlank(proxyPort)) {
-            builder.proxyOptions(new ProxyOptions(ProxyOptions.Type.HTTP, new InetSocketAddress(proxyHost, Integer.parseInt(proxyPort))));
+            builder.proxyOptions(new ProxyOptions(ProxyOptions.Type.HTTP,
+                    new InetSocketAddress(proxyHost, Integer.parseInt(proxyPort))));
         }
         return builder.build();
     }

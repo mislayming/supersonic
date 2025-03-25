@@ -18,7 +18,7 @@ import java.util.stream.Collectors;
 public class TableView {
 
     private Set<String> fields = Sets.newHashSet();
-    //private List<SqlNode> select = Lists.newArrayList();
+    // private List<SqlNode> select = Lists.newArrayList();
 
     private List<SqlNode> filter = new ArrayList<>();
     private List<SqlNode> dimension = new ArrayList<>();
@@ -35,15 +35,14 @@ public class TableView {
 
     public SqlNode build() {
         measure.addAll(dimension);
-        
+
         // 构建GROUP BY子句
         SqlNodeList groupByNodeList = null;
         if (!groupByFields.isEmpty()) {
             List<SqlNode> groupByNodes = new ArrayList<>();
             for (String field : groupByFields) {
-                groupByNodes.add(new SqlIdentifier(
-                    Arrays.asList(field.split("\\.")),
-                    SqlParserPos.ZERO));
+                groupByNodes.add(
+                        new SqlIdentifier(Arrays.asList(field.split("\\.")), SqlParserPos.ZERO));
             }
             groupByNodeList = new SqlNodeList(groupByNodes, SqlParserPos.ZERO);
         }
@@ -62,20 +61,19 @@ public class TableView {
 
 
         // 在SqlSelect构造函数中使用groupByNodeList
-        return new SqlSelect(
-            SqlParserPos.ZERO, //pos
-            null,  // keywordList
-            new SqlNodeList(measure, SqlParserPos.ZERO),  // selectList
-            table,  // from
-            filterNodeList,  // where
-            groupByNodeList,  // groupBy
-            null,  // having
-            null,  // windowDecls
-            null,  // qualify
-            order,  // orderBy
-            offset,  // offset
-            fetch,  // fetch
-            null    //hints
+        return new SqlSelect(SqlParserPos.ZERO, // pos
+                null, // keywordList
+                new SqlNodeList(measure, SqlParserPos.ZERO), // selectList
+                table, // from
+                filterNodeList, // where
+                groupByNodeList, // groupBy
+                null, // having
+                null, // windowDecls
+                null, // qualify
+                order, // orderBy
+                offset, // offset
+                fetch, // fetch
+                null // hints
         );
     }
 }

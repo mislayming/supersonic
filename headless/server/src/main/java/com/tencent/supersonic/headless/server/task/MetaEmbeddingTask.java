@@ -1,5 +1,7 @@
 package com.tencent.supersonic.headless.server.task;
 
+import javax.annotation.PreDestroy;
+
 import com.tencent.supersonic.common.config.EmbeddingConfig;
 import com.tencent.supersonic.common.pojo.DataItem;
 import com.tencent.supersonic.common.service.EmbeddingService;
@@ -18,7 +20,6 @@ import org.springframework.core.annotation.Order;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
-import javax.annotation.PreDestroy;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -76,20 +77,17 @@ public class MetaEmbeddingTask implements CommandLineRunner {
             List<DataItem> dimensionDataItems = dimensionService.getAllDataEvents().getDataItems();
 
 
-            Map<String, ModelResp> modelMap = Stream.concat(
-                            metricDataItems.stream().map(t -> Long.parseLong(t.getModelId())),
-                            dimensionDataItems.stream().map(t -> Long.parseLong(t.getModelId()))
-                    )
-                    .distinct()
-                    .parallel()
-                    .map(t -> modelService.getModel(t))
+            Map<String, ModelResp> modelMap = Stream
+                    .concat(metricDataItems.stream().map(t -> Long.parseLong(t.getModelId())),
+                            dimensionDataItems.stream().map(t -> Long.parseLong(t.getModelId())))
+                    .distinct().parallel().map(t -> modelService.getModel(t))
                     .filter(Objects::nonNull) // 过滤掉可能的 null 值
                     .collect(Collectors.toMap(model -> model.getId().toString(), model -> model));
 
 
             metricDataItems.stream().forEach(t -> {
                 ModelResp rsp = modelMap.get(t.getModelId());
-                if(rsp != null) {
+                if (rsp != null) {
                     t.setName(rsp.getName() + "_" + t.getName());
                 }
             });
@@ -100,7 +98,7 @@ public class MetaEmbeddingTask implements CommandLineRunner {
 
             dimensionDataItems.stream().forEach(t -> {
                 ModelResp rsp = modelMap.get(t.getModelId());
-                if(rsp != null) {
+                if (rsp != null) {
                     t.setName(rsp.getName() + "_" + t.getName());
                 }
             });

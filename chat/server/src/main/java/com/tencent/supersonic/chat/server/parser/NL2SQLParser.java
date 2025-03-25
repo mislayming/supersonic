@@ -94,16 +94,18 @@ public class NL2SQLParser implements ChatQueryParser {
                 StringBuilder errMsg = new StringBuilder();
                 for (Long datasetId : requestedDatasets) {
                     queryNLReq.setDataSetIds(Collections.singleton(datasetId));
-                    ChatParseResp parseResp = new ChatParseResp(parseContext.getRequest().getQueryId());
-//                for (MapModeEnum mode : Lists.newArrayList(MapModeEnum.STRICT,
-//                        MapModeEnum.MODERATE)) {
-//                    queryNLReq.setMapModeEnum(mode);
-//                    stopWatch.start("NL2SQLParser MODE " + mode.name());
-//                    log.info("START NL2SQLParser MODE " + mode.name());
-//                    doParse(queryNLReq, parseResp);
-//                    stopWatch.stop();
-//                    log.info("END NL2SQLParser MODE " + mode.name() + " TIME[{}]ms", stopWatch.lastTaskInfo().getTimeMillis());
-//                }
+                    ChatParseResp parseResp =
+                            new ChatParseResp(parseContext.getRequest().getQueryId());
+                    // for (MapModeEnum mode : Lists.newArrayList(MapModeEnum.STRICT,
+                    // MapModeEnum.MODERATE)) {
+                    // queryNLReq.setMapModeEnum(mode);
+                    // stopWatch.start("NL2SQLParser MODE " + mode.name());
+                    // log.info("START NL2SQLParser MODE " + mode.name());
+                    // doParse(queryNLReq, parseResp);
+                    // stopWatch.stop();
+                    // log.info("END NL2SQLParser MODE " + mode.name() + " TIME[{}]ms",
+                    // stopWatch.lastTaskInfo().getTimeMillis());
+                    // }
 
                     if (parseResp.getSelectedParses().isEmpty() && candidateParses.isEmpty()) {
                         queryNLReq.setMapModeEnum(MapModeEnum.LOOSE);
@@ -122,8 +124,8 @@ public class NL2SQLParser implements ChatQueryParser {
                 int parserShowCount =
                         Integer.parseInt(parserConfig.getParameterValue(PARSER_SHOW_COUNT));
                 SemanticParseInfo.sort(candidateParses);
-                parseContext.getResponse().setSelectedParses(
-                        candidateParses.subList(0, Math.min(parserShowCount, candidateParses.size())));
+                parseContext.getResponse().setSelectedParses(candidateParses.subList(0,
+                        Math.min(parserShowCount, candidateParses.size())));
                 if (parseContext.getResponse().getSelectedParses().isEmpty()) {
                     parseContext.getResponse().setState(ParseResp.ParseState.FAILED);
                     parseContext.getResponse().setErrorMsg(errMsg.toString());
@@ -143,25 +145,26 @@ public class NL2SQLParser implements ChatQueryParser {
                 SemanticParseInfo userSelectParse = parseContext.getRequest().getSelectedParse();
                 queryNLReq.setSelectedParseInfo(Objects.nonNull(userSelectParse) ? userSelectParse
                         : parseContext.getResponse().getSelectedParses().get(0));
-                parseContext.setResponse(new ChatParseResp(parseContext.getResponse().getQueryId()));
+                parseContext
+                        .setResponse(new ChatParseResp(parseContext.getResponse().getQueryId()));
 
                 rewriteMultiTurn(parseContext, queryNLReq);
                 addDynamicExemplars(parseContext, queryNLReq);
                 doParse(queryNLReq, parseContext.getResponse());
 
                 /*
-                // NOTE：失败了就失败了，不用再次处理，这种做法并不好。解决不了问题
-                // try again with all semantic fields passed to LLM
-                if (parseContext.getResponse().getState().equals(ParseResp.ParseState.FAILED)) {
-                    queryNLReq.setSelectedParseInfo(null);
-                    queryNLReq.setMapModeEnum(MapModeEnum.ALL);
-                    doParse(queryNLReq, parseContext.getResponse());
-                }
+                 * // NOTE：失败了就失败了，不用再次处理，这种做法并不好。解决不了问题 // try again with all semantic fields
+                 * passed to LLM if
+                 * (parseContext.getResponse().getState().equals(ParseResp.ParseState.FAILED)) {
+                 * queryNLReq.setSelectedParseInfo(null);
+                 * queryNLReq.setMapModeEnum(MapModeEnum.ALL); doParse(queryNLReq,
+                 * parseContext.getResponse()); }
                  */
             }
         } finally {
             stopWatch.stop();
-            keyPipelineLog.info("parse finished. \n --------------- \n {} \n\n", stopWatch.shortSummary());
+            keyPipelineLog.info("parse finished. \n --------------- \n {} \n\n",
+                    stopWatch.shortSummary());
         }
     }
 

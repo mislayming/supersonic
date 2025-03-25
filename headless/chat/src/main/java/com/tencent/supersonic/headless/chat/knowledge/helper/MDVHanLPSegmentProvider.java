@@ -22,11 +22,11 @@ public class MDVHanLPSegmentProvider implements HanLPSegmentProvider {
 
     @Override
     public Segment getSegment() {
-//        try {
-//            return new PerceptronLexicalAnalyzer(getFilePath(FILE_CWS), getFilePath(FILE_POS));
-//        } catch (Exception e) {
-//            log.error("读取HandLP文件失败。", e);
-//        }
+        try {
+            return new PerceptronLexicalAnalyzer(getFilePath(FILE_CWS), getFilePath(FILE_POS));
+        } catch (Exception e) {
+            log.error("读取HandLP文件失败。", e);
+        }
         return HanLP.newSegment();
     }
 

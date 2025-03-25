@@ -34,7 +34,8 @@ public class OpenAiModelFactory implements ModelFactory, InitializingBean {
         String proxyPort = env.getProperty("integration.supersonic.http-proxy-port");
         Proxy httpProxy = null;
         if (StringUtils.isNotBlank(proxyHost) && StringUtils.isNotBlank(proxyPort)) {
-            httpProxy = new Proxy(Proxy.Type.HTTP, new InetSocketAddress(proxyHost, Integer.parseInt(proxyPort)));
+            httpProxy = new Proxy(Proxy.Type.HTTP,
+                    new InetSocketAddress(proxyHost, Integer.parseInt(proxyPort)));
         }
         return OpenAiChatModel.builder().baseUrl(modelConfig.getBaseUrl())
                 .modelName(modelConfig.getModelName()).apiKey(modelConfig.keyDecrypt())
@@ -42,9 +43,7 @@ public class OpenAiModelFactory implements ModelFactory, InitializingBean {
                 .maxRetries(modelConfig.getMaxRetries())
                 .timeout(Duration.ofSeconds(modelConfig.getTimeOut()))
                 .logRequests(modelConfig.getLogRequests())
-                .logResponses(modelConfig.getLogResponses())
-                .proxy(httpProxy)
-                .build();
+                .logResponses(modelConfig.getLogResponses()).proxy(httpProxy).build();
     }
 
     @Override

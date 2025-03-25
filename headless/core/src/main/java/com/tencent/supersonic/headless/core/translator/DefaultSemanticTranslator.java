@@ -35,15 +35,19 @@ public class DefaultSemanticTranslator implements SemanticTranslator {
                     log.debug("QueryConverter accept [{}]", parser.getClass().getName());
                     parser.parse(queryStatement);
                     String innerSQL = StringUtils.replace(queryStatement.getSql(), "\n", " ");
-                    String querySQL = StringUtils.replace(queryStatement.getSqlQuery().getSql(), "\n", " ");
+                    String querySQL =
+                            StringUtils.replace(queryStatement.getSqlQuery().getSql(), "\n", " ");
                     String placeholder = "                         ";
-                    keyPipelineLog.info("\t\t {} translate parser[{}] -> \n{}\t\t\t\t - querySQL: {} \n{}\t\t\t\t - innerSQL: {}", parser.getClass().getSimpleName(), queryStatement.isOk(), placeholder, querySQL, placeholder, innerSQL);
+                    keyPipelineLog.info(
+                            "\t\t {} translate parser[{}] -> \n{}\t\t\t\t - querySQL: {} \n{}\t\t\t\t - innerSQL: {}",
+                            parser.getClass().getSimpleName(), queryStatement.isOk(), placeholder,
+                            querySQL, placeholder, innerSQL);
                     if (queryStatement.getStatus() != 0) {
                         break;
                     }
-                }
-                else {
-                    keyPipelineLog.info("\t\t {} translate parser[{}] didn't accept", parser.getClass().getSimpleName(), queryStatement.isOk());
+                } else {
+                    keyPipelineLog.info("\t\t {} translate parser[{}] didn't accept",
+                            parser.getClass().getSimpleName(), queryStatement.isOk());
                 }
             }
             if (!queryStatement.isOk()) {
@@ -63,10 +67,12 @@ public class DefaultSemanticTranslator implements SemanticTranslator {
             for (QueryOptimizer optimizer : ComponentFactory.getQueryOptimizers()) {
                 if (optimizer.accept(queryStatement)) {
                     optimizer.rewrite(queryStatement);
-                    keyPipelineLog.info("\t\t {} translate optimizer -> {}", optimizer.getClass().getSimpleName(), StringUtils.replace(queryStatement.getSql(), "\n", " "));
-                }
-                else {
-                    keyPipelineLog.info("\t\t {} translate optimizer didn't accept", optimizer.getClass().getSimpleName());
+                    keyPipelineLog.info("\t\t {} translate optimizer -> {}",
+                            optimizer.getClass().getSimpleName(),
+                            StringUtils.replace(queryStatement.getSql(), "\n", " "));
+                } else {
+                    keyPipelineLog.info("\t\t {} translate optimizer didn't accept",
+                            optimizer.getClass().getSimpleName());
                 }
             }
             log.info("translated query SQL: [{}]",

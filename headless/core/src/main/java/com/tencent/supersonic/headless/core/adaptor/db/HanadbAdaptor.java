@@ -8,7 +8,8 @@ public class HanadbAdaptor extends DefaultDbAdaptor {
 
     @Override
     public String rewriteSql(QueryStatement qstate) {
-        return qstate.getSql().replaceAll("`(.*?)`", "\"$1\"").replaceAll("\"([A-Z0-9_]+?)\"", "$1");
+        return qstate.getSql().replaceAll("`(.*?)`", "\"$1\"").replaceAll("\"([A-Z0-9_]+?)\"",
+                "$1");
     }
 
 }

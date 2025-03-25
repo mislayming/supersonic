@@ -62,31 +62,29 @@ public class SourceRender extends Renderer {
 
         // 收集所有需要GROUP BY的字段
         Set<String> groupByFields = new HashSet<>();
-        
+
         // 处理度量字段
         for (String metric : queryMetrics) {
             MetricNode metricNode =
                     buildMetricNode(metric, datasource, scope, schema, nonAgg, alias);
             if (!metricNode.getAggNode().isEmpty()) {
-                metricNode.getAggNode().entrySet().stream()
-                        .forEach(m -> {
-                            output.getMeasure().add(m.getValue());
-                            // 如果是非聚合字段，需要加入GROUP BY
-                            if (!m.getValue().toString().contains("COUNT(") && 
-                                !m.getValue().toString().contains("SUM(") &&
-                                !m.getValue().toString().contains("AVG(") &&
-                                !m.getValue().toString().contains("MAX(") &&
-                                !m.getValue().toString().contains("MIN(")) {
-                                groupByFields.add(m.getKey());
-                            }
-                        });
+                metricNode.getAggNode().entrySet().stream().forEach(m -> {
+                    output.getMeasure().add(m.getValue());
+                    // 如果是非聚合字段，需要加入GROUP BY
+                    if (!m.getValue().toString().contains("COUNT(")
+                            && !m.getValue().toString().contains("SUM(")
+                            && !m.getValue().toString().contains("AVG(")
+                            && !m.getValue().toString().contains("MAX(")
+                            && !m.getValue().toString().contains("MIN(")) {
+                        groupByFields.add(m.getKey());
+                    }
+                });
             }
             if (metricNode.getNonAggNode() != null) {
-                metricNode.getNonAggNode().entrySet().stream()
-                        .forEach(m -> {
-                            dataSet.getMeasure().add(m.getValue());
-                            groupByFields.add(m.getKey());
-                        });
+                metricNode.getNonAggNode().entrySet().stream().forEach(m -> {
+                    dataSet.getMeasure().add(m.getValue());
+                    groupByFields.add(m.getKey());
+                });
             }
             if (metricNode.getMeasureFilter() != null) {
                 metricNode.getMeasureFilter().entrySet().stream()
@@ -110,28 +108,32 @@ public class SourceRender extends Renderer {
                 boolean isLeft = relation.getLeft().equals(datasource.getName());
                 boolean isRight = relation.getRight().equals(datasource.getName());
                 if (isLeft || isRight) {
-                    for(Triple<String, String, String> triple : relation.getJoinCondition()) {
+                    for (Triple<String, String, String> triple : relation.getJoinCondition()) {
                         String field = isLeft ? triple.getLeft() : triple.getRight();
                         groupByFields.add(field);
                         if (!groupByFields.contains(field)) {
-                            Optional<Measure> optionalMeasure = Renderer.getMeasureByName(field, datasource);
+                            Optional<Measure> optionalMeasure =
+                                    Renderer.getMeasureByName(field, datasource);
 
-                            if(optionalMeasure.isPresent()) {
+                            if (optionalMeasure.isPresent()) {
                                 Measure measure = optionalMeasure.get();
-                                SqlNode joinNode = MeasureNode.buildNonAgg("", measure, scope, schema.getOntology().getDatabaseType());
+                                SqlNode joinNode = MeasureNode.buildNonAgg("", measure, scope,
+                                        schema.getOntology().getDatabaseType());
                                 dataSet.getMeasure().add(joinNode);
-                            }
-                            else {
-                                Optional<Dimension> optionalDimension = Renderer.getDimensionByName(field, datasource);
-                                if(optionalDimension.isPresent()) {
+                            } else {
+                                Optional<Dimension> optionalDimension =
+                                        Renderer.getDimensionByName(field, datasource);
+                                if (optionalDimension.isPresent()) {
                                     Dimension dimension = optionalDimension.get();
-                                    SqlNode joinNode = DimensionNode.build(dimension, scope, schema.getOntology().getDatabaseType());
+                                    SqlNode joinNode = DimensionNode.build(dimension, scope,
+                                            schema.getOntology().getDatabaseType());
                                     dataSet.getDimension().add(joinNode);
-                                }
-                                else {
-                                    Optional<Identify> optionalIdentify = Renderer.getIdentifyByName(field, datasource);
+                                } else {
+                                    Optional<Identify> optionalIdentify =
+                                            Renderer.getIdentifyByName(field, datasource);
                                     Identify identify = optionalIdentify.get();
-                                    SqlNode joinNode = IdentifyNode.build(identify, scope, schema.getOntology().getDatabaseType());
+                                    SqlNode joinNode = IdentifyNode.build(identify, scope,
+                                            schema.getOntology().getDatabaseType());
                                     dataSet.getMeasure().add(joinNode);
                                 }
                             }
@@ -174,7 +176,7 @@ public class SourceRender extends Renderer {
                     continue;
                 }
 
-                if ("".equals(alias)/*|| (alias != null && alias.equals(dim.getName()))*/) {
+                if ("".equals(alias)/* || (alias != null && alias.equals(dim.getName())) */) {
                     output.getDimension().add(DimensionNode.buildName(dim, scope, engineType));
                 } else {
                     output.getDimension()
@@ -411,39 +413,39 @@ public class SourceRender extends Renderer {
 
     public static TableView buildTableView(DataModel model, List<String> whereFields,
             Set<String> queryMetrics, Set<String> queryDimensions, String whereCondition,
-            SqlValidatorScope scope, S2CalciteSchema schema, Set<String> neededFields) throws Exception {
-        
+            SqlValidatorScope scope, S2CalciteSchema schema, Set<String> neededFields)
+            throws Exception {
+
         TableView dataSet = new TableView();
         TableView output = new TableView();
-        
+
         // 收集所有需要GROUP BY的字段
         Set<String> groupByFields = new HashSet<>();
-        
+
         // 1. 处理度量字段
         for (String metric : queryMetrics) {
             if (isMetricBelongToModel(metric, model)) {
                 MetricNode metricNode = buildMetricNode(metric, model, scope, schema, false, "");
                 if (metricNode.getNonAggNode() != null) {
-                    metricNode.getNonAggNode().entrySet().stream()
-                        .forEach(m -> {
-                            dataSet.getMeasure().add(m.getValue());
-                            // 非聚合字段需要加入GROUP BY
-                            groupByFields.add(m.getKey());
-                        });
+                    metricNode.getNonAggNode().entrySet().stream().forEach(m -> {
+                        dataSet.getMeasure().add(m.getValue());
+                        // 非聚合字段需要加入GROUP BY
+                        groupByFields.add(m.getKey());
+                    });
                 }
             }
         }
-        
+
         // 2. 处理维度字段
         for (String dimension : queryDimensions) {
             if (isDimensionBelongToModel(dimension, model)) {
-                buildDimension("", dimension, model, schema, false, new HashMap<>(),
-                        dataSet, output, scope);
+                buildDimension("", dimension, model, schema, false, new HashMap<>(), dataSet,
+                        output, scope);
                 // 维度字段需要加入GROUP BY
                 groupByFields.add(dimension);
             }
         }
-        
+
         // 3. 处理join和where条件中需要的字段
         for (String field : neededFields) {
             if (isFieldBelongToModel(field, model)) {
@@ -456,45 +458,44 @@ public class SourceRender extends Renderer {
                 }
             }
         }
-        
+
         // 设置GROUP BY字段
         dataSet.getGroupByFields().addAll(groupByFields);
-        
+
         // 构建基础表查询
         SqlNode tableNode = DataModelNode.buildExtend(model, new HashMap<>(), scope);
         dataSet.setTable(tableNode);
-        
+
         return dataSet;
     }
 
     private static boolean isFieldInMeasure(String field, List<SqlNode> measures) {
-        return measures.stream()
-            .anyMatch(node -> node.toString().contains(field));
+        return measures.stream().anyMatch(node -> node.toString().contains(field));
     }
 
-    private static SqlNode buildFieldNode(String field, DataModel model, 
-            SqlValidatorScope scope, S2CalciteSchema schema) throws Exception {
+    private static SqlNode buildFieldNode(String field, DataModel model, SqlValidatorScope scope,
+            S2CalciteSchema schema) throws Exception {
         // 先检查是否是度量
         Optional<Measure> measure = getMeasureByName(field, model);
         if (measure.isPresent()) {
-            return MeasureNode.buildNonAgg("", measure.get(), scope, 
+            return MeasureNode.buildNonAgg("", measure.get(), scope,
                     schema.getOntology().getDatabaseType());
         }
-        
+
         // 再检查是否是维度
         Optional<Dimension> dimension = getDimensionByName(field, model);
         if (dimension.isPresent()) {
-            return DimensionNode.build(dimension.get(), scope, 
+            return DimensionNode.build(dimension.get(), scope,
                     schema.getOntology().getDatabaseType());
         }
-        
+
         // 最后检查是否是标识符
         Optional<Identify> identify = getIdentifyByName(field, model);
         if (identify.isPresent()) {
-            return IdentifyNode.build(identify.get(), scope, 
+            return IdentifyNode.build(identify.get(), scope,
                     schema.getOntology().getDatabaseType());
         }
-        
+
         throw new RuntimeException("Field " + field + " not found in model " + model.getName());
     }
 }

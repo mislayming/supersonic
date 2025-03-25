@@ -1,6 +1,5 @@
 package com.tencent.supersonic.headless.chat.mapper;
 
-import com.tencent.supersonic.headless.api.pojo.response.S2Term;
 import com.tencent.supersonic.headless.chat.ChatQueryContext;
 import com.tencent.supersonic.headless.chat.knowledge.MapResult;
 import lombok.extern.slf4j.Slf4j;
@@ -19,17 +18,15 @@ public abstract class BatchMatchStrategy<T extends MapResult> extends BaseMatchS
     protected MapperConfig mapperConfig;
 
     @Override
-    public List<T> detect(ChatQueryContext chatQueryContext, List<S2Term> terms,
-            Set<Long> detectDataSetIds) {
+    public List<T> detect(ChatQueryContext chatQueryContext, Set<Long> detectDataSetIds) {
 
         String text = chatQueryContext.getRequest().getQueryText();
         Set<String> detectSegments = new HashSet<>();
 
         int embeddingTextSize = Integer
-                .valueOf(mapperConfig.getParameterValue(MapperConfig.EMBEDDING_MAPPER_TEXT_SIZE));
-
+                .parseInt(mapperConfig.getParameterValue(MapperConfig.EMBEDDING_MAPPER_TEXT_SIZE));
         int embeddingTextStep = Integer
-                .valueOf(mapperConfig.getParameterValue(MapperConfig.EMBEDDING_MAPPER_TEXT_STEP));
+                .parseInt(mapperConfig.getParameterValue(MapperConfig.EMBEDDING_MAPPER_TEXT_STEP));
 
         for (int startIndex = 0; startIndex < text.length(); startIndex += embeddingTextStep) {
             int endIndex = Math.min(startIndex + embeddingTextSize, text.length());

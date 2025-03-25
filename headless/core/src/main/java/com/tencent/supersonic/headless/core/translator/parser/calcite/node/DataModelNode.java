@@ -199,8 +199,8 @@ public class DataModelNode extends SemanticNode {
             });
 
             model.getIdentifiers().forEach(i -> {
-                if (!dataModelMap.containsKey(modelName)
-                        && (queryDimensions.contains(i.getName())) || queryMeasures.contains(i.getName())) {
+                if (!dataModelMap.containsKey(modelName) && (queryDimensions.contains(i.getName()))
+                        || queryMeasures.contains(i.getName())) {
                     dataModelMap.put(modelName, model);
                 }
             });
@@ -208,40 +208,40 @@ public class DataModelNode extends SemanticNode {
 
         return new ArrayList<>(dataModelMap.values());
 
-//        for (Map.Entry<String, DataModel> entry : ontology.getDataModelMap().entrySet()) {
-//            Set<String> sourceMeasure = entry.getValue().getMeasures().stream()
-//                    .map(Measure::getName).collect(Collectors.toSet());
-//            sourceMeasure.retainAll(queryMeasures);
-//            dataModelMeasuresCount.put(entry.getKey(), sourceMeasure.size());
-//        }
-//
-//
-//        // first, find the base model
-//        DataModel baseDataModel = findBaseModel(ontology, queryMeasures, queryDimensions);
-//        if (Objects.isNull(baseDataModel)) {
-//            throw new RuntimeException(
-//                    String.format("could not find matching dataModel, dimensions:%s, measures:%s",
-//                            queryDimensions, queryMeasures));
-//        }
-//        // if the base model matches all queried measures and dimensions, just return
-//        if (checkMatch(baseDataModel, queryMeasures, queryDimensions)) {
-//            log.debug("baseDataModel match all measures and dimensions");
-//            return Collections.singletonList(baseDataModel);
-//        }
-//
-//        // second, traverse the ontology to find other related dataModels
-//        List<DataModel> relatedDataModels = findRelatedModelsByRelation(ontology, queryParam,
-//                baseDataModel, queryDimensions, queryMeasures);
-//        if (CollectionUtils.isEmpty(relatedDataModels)) {
-//            relatedDataModels = findRelatedModelsByIdentifier(ontology, baseDataModel,
-//                    queryDimensions, queryMeasures);
-//        }
-//        if (CollectionUtils.isEmpty(relatedDataModels)) {
-//            relatedDataModels = Collections.singletonList(baseDataModel);
-//        }
-//
-//        log.debug("relatedDataModels {}", relatedDataModels);
-//        return relatedDataModels;
+        // for (Map.Entry<String, DataModel> entry : ontology.getDataModelMap().entrySet()) {
+        // Set<String> sourceMeasure = entry.getValue().getMeasures().stream()
+        // .map(Measure::getName).collect(Collectors.toSet());
+        // sourceMeasure.retainAll(queryMeasures);
+        // dataModelMeasuresCount.put(entry.getKey(), sourceMeasure.size());
+        // }
+        //
+        //
+        // // first, find the base model
+        // DataModel baseDataModel = findBaseModel(ontology, queryMeasures, queryDimensions);
+        // if (Objects.isNull(baseDataModel)) {
+        // throw new RuntimeException(
+        // String.format("could not find matching dataModel, dimensions:%s, measures:%s",
+        // queryDimensions, queryMeasures));
+        // }
+        // // if the base model matches all queried measures and dimensions, just return
+        // if (checkMatch(baseDataModel, queryMeasures, queryDimensions)) {
+        // log.debug("baseDataModel match all measures and dimensions");
+        // return Collections.singletonList(baseDataModel);
+        // }
+        //
+        // // second, traverse the ontology to find other related dataModels
+        // List<DataModel> relatedDataModels = findRelatedModelsByRelation(ontology, queryParam,
+        // baseDataModel, queryDimensions, queryMeasures);
+        // if (CollectionUtils.isEmpty(relatedDataModels)) {
+        // relatedDataModels = findRelatedModelsByIdentifier(ontology, baseDataModel,
+        // queryDimensions, queryMeasures);
+        // }
+        // if (CollectionUtils.isEmpty(relatedDataModels)) {
+        // relatedDataModels = Collections.singletonList(baseDataModel);
+        // }
+        //
+        // log.debug("relatedDataModels {}", relatedDataModels);
+        // return relatedDataModels;
     }
 
     private static DataModel findBaseModel(Ontology ontology, Set<String> queryMeasures,
@@ -320,66 +320,58 @@ public class DataModelNode extends SemanticNode {
             Set<String> queryMeasures) {
         Set<String> joinDataModelNames = new HashSet<>();
         List<DataModel> joinDataModels = new ArrayList<>();
-        
+
         if (!CollectionUtils.isEmpty(ontology.getJoinRelations())) {
             // 构建完整的join关系图
             Map<String, Set<String>> joinGraph = buildJoinGraph(ontology.getJoinRelations());
-            
+
             // 找到所有需要的表
-            Set<String> requiredTables = findTablesWithRequiredData(ontology, queryMeasures, queryDimensions);
-            
+            Set<String> requiredTables =
+                    findTablesWithRequiredData(ontology, queryMeasures, queryDimensions);
+
             // 对于每个必需的表,找到从baseModel到该表的所有中间表
             Set<String> allNeededTables = new HashSet<>();
             allNeededTables.add(baseDataModel.getName());
-            
+
             for (String targetTable : requiredTables) {
                 if (!targetTable.equals(baseDataModel.getName())) {
                     // 找到所有可能的路径
-                    Set<String> intermediateTables = findAllIntermediateTables(
-                        joinGraph, 
-                        baseDataModel.getName(),
-                        targetTable
-                    );
+                    Set<String> intermediateTables = findAllIntermediateTables(joinGraph,
+                            baseDataModel.getName(), targetTable);
                     allNeededTables.addAll(intermediateTables);
                 }
             }
-            
+
             joinDataModelNames.addAll(allNeededTables);
         }
-        
+
         // 转换为DataModel列表
         if (!CollectionUtils.isEmpty(joinDataModelNames)) {
             return orderDataModels(joinDataModelNames, ontology);
         }
-        
+
         return Lists.newArrayList();
     }
 
     // 找到两个表之间所有可能的中间表
-    private static Set<String> findAllIntermediateTables(
-            Map<String, Set<String>> joinGraph, 
-            String start, 
-            String end) {
+    private static Set<String> findAllIntermediateTables(Map<String, Set<String>> joinGraph,
+            String start, String end) {
         Set<String> result = new HashSet<>();
         Set<String> visited = new HashSet<>();
         findPathsDFS(joinGraph, start, end, visited, result);
         return result;
     }
 
-    private static void findPathsDFS(
-            Map<String, Set<String>> joinGraph,
-            String current,
-            String target,
-            Set<String> visited,
-            Set<String> allTables) {
-        
+    private static void findPathsDFS(Map<String, Set<String>> joinGraph, String current,
+            String target, Set<String> visited, Set<String> allTables) {
+
         visited.add(current);
         allTables.add(current);
-        
+
         if (current.equals(target)) {
             return;
         }
-        
+
         Set<String> neighbors = joinGraph.getOrDefault(current, Collections.emptySet());
         for (String next : neighbors) {
             if (!visited.contains(next)) {
@@ -403,8 +395,8 @@ public class DataModelNode extends SemanticNode {
     }
 
     // 找到包含所需数据的表
-    private static Set<String> findTablesWithRequiredData(Ontology ontology,
-                                                          Set<String> measures, Set<String> dimensions) {
+    private static Set<String> findTablesWithRequiredData(Ontology ontology, Set<String> measures,
+            Set<String> dimensions) {
         Set<String> tables = new HashSet<>();
 
         // 检查每个数据模型
@@ -412,13 +404,11 @@ public class DataModelNode extends SemanticNode {
             DataModel model = entry.getValue();
 
             // 检查度量
-            boolean hasMeasure = model.getMeasures().stream()
-                    .map(Measure::getName)
-                    .anyMatch(measures::contains);
+            boolean hasMeasure =
+                    model.getMeasures().stream().map(Measure::getName).anyMatch(measures::contains);
 
             // 检查维度
-            boolean hasDimension = model.getDimensions().stream()
-                    .map(Dimension::getName)
+            boolean hasDimension = model.getDimensions().stream().map(Dimension::getName)
                     .anyMatch(dimensions::contains);
 
             if (hasMeasure || hasDimension) {
@@ -429,21 +419,22 @@ public class DataModelNode extends SemanticNode {
         return tables;
     }
 
-    private static List<DataModel> orderDataModels(Set<String> joinDataModelNames, Ontology ontology) {
+    private static List<DataModel> orderDataModels(Set<String> joinDataModelNames,
+            Ontology ontology) {
         List<DataModel> orderedModels = new ArrayList<>();
 
         // 如果只有一个模型，直接返回
         if (joinDataModelNames.size() <= 1) {
-            joinDataModelNames.forEach(name ->
-                    orderedModels.add(ontology.getDataModelMap().get(name)));
+            joinDataModelNames
+                    .forEach(name -> orderedModels.add(ontology.getDataModelMap().get(name)));
             return orderedModels;
         }
 
         // 构建表之间的关联关系图
         Map<String, Set<JoinRelation>> joinGraph = new HashMap<>();
         for (JoinRelation relation : ontology.getJoinRelations()) {
-            if (joinDataModelNames.contains(relation.getLeft()) &&
-                    joinDataModelNames.contains(relation.getRight())) {
+            if (joinDataModelNames.contains(relation.getLeft())
+                    && joinDataModelNames.contains(relation.getRight())) {
                 joinGraph.computeIfAbsent(relation.getLeft(), k -> new HashSet<>()).add(relation);
                 joinGraph.computeIfAbsent(relation.getRight(), k -> new HashSet<>()).add(relation);
             }
@@ -475,11 +466,8 @@ public class DataModelNode extends SemanticNode {
         return orderedModels;
     }
 
-    private static boolean topologicalSort(String current,
-                                           Map<String, Set<JoinRelation>> joinGraph,
-                                           Set<String> visited,
-                                           Set<String> visiting,
-                                           Stack<String> orderStack) {
+    private static boolean topologicalSort(String current, Map<String, Set<JoinRelation>> joinGraph,
+            Set<String> visited, Set<String> visiting, Stack<String> orderStack) {
 
         // 检测循环依赖
         if (visiting.contains(current)) {
@@ -496,8 +484,8 @@ public class DataModelNode extends SemanticNode {
         // 访问所有相邻的表
         Set<JoinRelation> relations = joinGraph.getOrDefault(current, new HashSet<>());
         for (JoinRelation relation : relations) {
-            String next = relation.getLeft().equals(current) ?
-                    relation.getRight() : relation.getLeft();
+            String next =
+                    relation.getLeft().equals(current) ? relation.getRight() : relation.getLeft();
 
             if (!topologicalSort(next, joinGraph, visited, visiting, orderStack)) {
                 return false;

@@ -29,7 +29,8 @@ public class OutputRender extends Renderer {
 
         // 处理limit
         if (metricCommand.getLimit() > 0) {
-            SqlNode offset = SemanticNode.parse(metricCommand.getLimit().toString(), scope, engineType);
+            SqlNode offset =
+                    SemanticNode.parse(metricCommand.getLimit().toString(), scope, engineType);
             selectDataSet.setOffset(offset);
         }
 
@@ -39,7 +40,8 @@ public class OutputRender extends Renderer {
             for (ColumnOrder columnOrder : metricCommand.getOrder()) {
                 if (SqlStdOperatorTable.DESC.getName().equalsIgnoreCase(columnOrder.getOrder())) {
                     orderList.add(SqlStdOperatorTable.DESC.createCall(SqlParserPos.ZERO,
-                            new SqlNode[] {SemanticNode.parse(columnOrder.getCol(), scope, engineType)}));
+                            new SqlNode[] {SemanticNode.parse(columnOrder.getCol(), scope,
+                                    engineType)}));
                 } else {
                     orderList.add(SemanticNode.parse(columnOrder.getCol(), scope, engineType));
                 }

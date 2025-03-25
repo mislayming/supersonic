@@ -10,5 +10,5 @@ spring:
       data-locations: classpath:db/data-h2.sql,classpath:db/data-h2-demo.sql
   h2:
     console:
-      path: /h2-console/semantic
+      path: /h2-console/semantic;DB_CLOSE_DELAY=-1
       enabled: true

@@ -39,6 +39,10 @@ public class CoreDictionary {
         }
     }
 
+    public static void main(String[] args) {
+        System.out.printf(HanLP.segment("各公司员工都有多少人\n").toString());
+    }
+
     // 一些特殊的WORD_ID
     public static final int NR_WORD_ID = getWordID(Predefine.TAG_PEOPLE);
     public static final int NS_WORD_ID = getWordID(Predefine.TAG_PLACE);

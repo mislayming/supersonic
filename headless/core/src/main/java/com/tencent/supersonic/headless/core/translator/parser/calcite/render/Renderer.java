@@ -119,8 +119,7 @@ public abstract class Renderer {
         if (model == null || CollectionUtils.isEmpty(model.getMeasures())) {
             return false;
         }
-        return model.getMeasures().stream()
-                .anyMatch(m -> m.getName().equals(metric));
+        return model.getMeasures().stream().anyMatch(m -> m.getName().equals(metric));
     }
 
     // 检查维度是否属于指定的数据模型
@@ -128,8 +127,7 @@ public abstract class Renderer {
         if (model == null || CollectionUtils.isEmpty(model.getDimensions())) {
             return false;
         }
-        return model.getDimensions().stream()
-                .anyMatch(d -> d.getName().equals(dimension));
+        return model.getDimensions().stream().anyMatch(d -> d.getName().equals(dimension));
     }
 
     // 检查字段是否属于指定的数据模型（可以是度量、维度或标识符）
@@ -146,8 +144,7 @@ public abstract class Renderer {
 
         // 检查是否是标识符
         if (model != null && !CollectionUtils.isEmpty(model.getIdentifiers())) {
-            return model.getIdentifiers().stream()
-                    .anyMatch(i -> i.getName().equals(field));
+            return model.getIdentifiers().stream().anyMatch(i -> i.getName().equals(field));
         }
 
         return false;
@@ -162,9 +159,12 @@ public abstract class Renderer {
 
 
     private static final Pattern SCHEMA_PATTERN = Pattern.compile("SCHEMA_[a-f0-9]{32}");
-    private static final Pattern TABLE_ALIAS_PATTERN = Pattern.compile("(src\\d+_SCHEMA_[a-f0-9]{32})");
-    private static final Pattern RESULT_ALIAS_PATTERN = Pattern.compile("(SCHEMA_[a-f0-9]{32}_SCHEMA_[a-f0-9]{32}.*?_\\d+)");
-    private static final Pattern MDV_TABLE_PATTERN = Pattern.compile("__mdv_table_SCHEMA_[a-f0-9]{32}__");
+    private static final Pattern TABLE_ALIAS_PATTERN =
+            Pattern.compile("(src\\d+_SCHEMA_[a-f0-9]{32})");
+    private static final Pattern RESULT_ALIAS_PATTERN =
+            Pattern.compile("(SCHEMA_[a-f0-9]{32}_SCHEMA_[a-f0-9]{32}.*?_\\d+)");
+    private static final Pattern MDV_TABLE_PATTERN =
+            Pattern.compile("__mdv_table_SCHEMA_[a-f0-9]{32}__");
 
     public static String simplifySQL(String sql) {
         if (sql == null || sql.isEmpty()) {
@@ -225,7 +225,7 @@ public abstract class Renderer {
             }
         }
 
-        //System.out.println(result);
+        // System.out.println(result);
         return result;
     }
 }

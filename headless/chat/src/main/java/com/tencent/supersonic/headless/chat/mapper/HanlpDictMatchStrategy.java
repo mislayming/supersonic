@@ -31,18 +31,18 @@ public class HanlpDictMatchStrategy extends SingleMatchStrategy<HanlpMapResult> 
 
     public List<HanlpMapResult> detectByStep(ChatQueryContext chatQueryContext,
             Set<Long> detectDataSetIds, String detectSegment, int offset) {
+
         // step1. pre search
-        Integer oneDetectionMaxSize =
-                Integer.valueOf(mapperConfig.getParameterValue(MAPPER_DETECTION_MAX_SIZE));
-        LinkedHashSet<HanlpMapResult> hanlpMapResults = knowledgeBaseService
-                .prefixSearch(detectSegment, oneDetectionMaxSize,
-                        chatQueryContext.getModelIdToDataSetIds(), detectDataSetIds)
-                .stream().collect(Collectors.toCollection(LinkedHashSet::new));
+        int oneDetectionMaxSize =
+                Integer.parseInt(mapperConfig.getParameterValue(MAPPER_DETECTION_MAX_SIZE));
+        LinkedHashSet<HanlpMapResult> hanlpMapResults = new LinkedHashSet<>(
+                knowledgeBaseService.prefixSearch(detectSegment, oneDetectionMaxSize,
+                        chatQueryContext.getModelIdToDataSetIds(), detectDataSetIds));
+
         // step2. suffix search
-        LinkedHashSet<HanlpMapResult> suffixHanlpMapResults = knowledgeBaseService
-                .suffixSearch(detectSegment, oneDetectionMaxSize,
-                        chatQueryContext.getModelIdToDataSetIds(), detectDataSetIds)
-                .stream().collect(Collectors.toCollection(LinkedHashSet::new));
+        LinkedHashSet<HanlpMapResult> suffixHanlpMapResults = new LinkedHashSet<>(
+                knowledgeBaseService.suffixSearch(detectSegment, oneDetectionMaxSize,
+                        chatQueryContext.getModelIdToDataSetIds(), detectDataSetIds));
 
         hanlpMapResults.addAll(suffixHanlpMapResults);
 
@@ -58,23 +58,22 @@ public class HanlpDictMatchStrategy extends SingleMatchStrategy<HanlpMapResult> 
         hanlpMapResults = hanlpMapResults.stream()
                 .filter(term -> term.getSimilarity() >= getThresholdMatch(term.getNatures(),
                         chatQueryContext))
-                .filter(term -> CollectionUtils.isNotEmpty(term.getNatures())).map(parseResult -> {
-                    parseResult.setOffset(offset);
-                    return parseResult;
-                }).collect(Collectors.toCollection(LinkedHashSet::new));
+                .filter(term -> CollectionUtils.isNotEmpty(term.getNatures()))
+                .peek(parseResult -> parseResult.setOffset(offset))
+                .collect(Collectors.toCollection(LinkedHashSet::new));
 
         log.debug("detectSegment:{},after isSimilarity parseResults:{}", detectSegment,
                 hanlpMapResults);
 
         // step5. take only M dimensionValue or N-M metric/dimension value per rond.
         int oneDetectionValueSize =
-                Integer.valueOf(mapperConfig.getParameterValue(MAPPER_DIMENSION_VALUE_SIZE));
+                Integer.parseInt(mapperConfig.getParameterValue(MAPPER_DIMENSION_VALUE_SIZE));
         List<HanlpMapResult> dimensionValues = hanlpMapResults.stream()
                 .filter(entry -> mapperHelper.existDimensionValues(entry.getNatures()))
                 .limit(oneDetectionValueSize).collect(Collectors.toList());
 
-        Integer oneDetectionSize =
-                Integer.valueOf(mapperConfig.getParameterValue(MAPPER_DETECTION_SIZE));
+        int oneDetectionSize =
+                Integer.parseInt(mapperConfig.getParameterValue(MAPPER_DETECTION_SIZE));
         List<HanlpMapResult> oneRoundResults = new ArrayList<>();
 
         // add the dimensionValue if it exists
@@ -87,21 +86,21 @@ public class HanlpDictMatchStrategy extends SingleMatchStrategy<HanlpMapResult> 
             List<HanlpMapResult> additionalResults = hanlpMapResults.stream()
                     .filter(entry -> !mapperHelper.existDimensionValues(entry.getNatures())
                             && !oneRoundResults.contains(entry))
-                    .limit(oneDetectionSize - oneRoundResults.size()).collect(Collectors.toList());
+                    .limit(oneDetectionSize - oneRoundResults.size()).toList();
             oneRoundResults.addAll(additionalResults);
         }
         return oneRoundResults;
     }
 
     public double getThresholdMatch(List<String> natures, ChatQueryContext chatQueryContext) {
-        Double threshold =
-                Double.valueOf(mapperConfig.getParameterValue(MapperConfig.MAPPER_NAME_THRESHOLD));
-        Double minThreshold = Double
-                .valueOf(mapperConfig.getParameterValue(MapperConfig.MAPPER_NAME_THRESHOLD_MIN));
+        double threshold = Double
+                .parseDouble(mapperConfig.getParameterValue(MapperConfig.MAPPER_NAME_THRESHOLD));
+        double minThreshold = Double.parseDouble(
+                mapperConfig.getParameterValue(MapperConfig.MAPPER_NAME_THRESHOLD_MIN));
         if (mapperHelper.existDimensionValues(natures)) {
-            threshold = Double
-                    .valueOf(mapperConfig.getParameterValue(MapperConfig.MAPPER_VALUE_THRESHOLD));
-            minThreshold = Double.valueOf(
+            threshold = Double.parseDouble(
+                    mapperConfig.getParameterValue(MapperConfig.MAPPER_VALUE_THRESHOLD));
+            minThreshold = Double.parseDouble(
                     mapperConfig.getParameterValue(MapperConfig.MAPPER_VALUE_THRESHOLD_MIN));
         }
 

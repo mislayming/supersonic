@@ -38,7 +38,7 @@ public class QueryUtils {
     private Boolean optimizeEnable;
 
     public void populateQueryColumns(SemanticQueryResp semanticQueryResp,
-                                     SemanticSchemaResp semanticSchemaResp) {
+            SemanticSchemaResp semanticSchemaResp) {
         Map<String, MetricResp> metricRespMap = createMetricRespMap(semanticSchemaResp);
         Map<String, String> namePair = new HashMap<>();
         Map<String, String> nameTypePair = new HashMap<>();
@@ -54,7 +54,7 @@ public class QueryUtils {
     }
 
     private void populateNamePairs(SemanticSchemaResp semanticSchemaResp,
-                                   Map<String, String> namePair, Map<String, String> nameTypePair) {
+            Map<String, String> namePair, Map<String, String> nameTypePair) {
         semanticSchemaResp.getMetrics().forEach(metricDesc -> {
             namePair.put(metricDesc.getBizName(), metricDesc.getName());
             nameTypePair.put(metricDesc.getBizName(), SemanticType.NUMBER.name());
@@ -66,8 +66,8 @@ public class QueryUtils {
     }
 
     private void processColumn(QueryColumn column, Map<String, String> namePair,
-                               Map<String, String> nameTypePair, Map<String, MetricResp> metricRespMap) {
-//        String nameEn = getName(column.getNameEn().toLowerCase());
+            Map<String, String> nameTypePair, Map<String, MetricResp> metricRespMap) {
+        // String nameEn = getName(column.getNameEn().toLowerCase());
         // TODO 临时处理，此处强转为小写，导致存在大小的字段匹配不了，等社区修复后更新。
         String nameEn = getName(column.getNameEn());
         if (nameEn.contains(JOIN_UNDERLINE)) {
@@ -114,9 +114,10 @@ public class QueryUtils {
         }
         return type.equalsIgnoreCase("int") || type.equalsIgnoreCase("bigint")
                 || type.equalsIgnoreCase("float") || type.equalsIgnoreCase("double")
-                || type.equalsIgnoreCase("numeric") || type.toLowerCase().startsWith("decimal") || type.equalsIgnoreCase("real")
-                || type.toLowerCase().startsWith("uint") || type.toLowerCase().startsWith("int")
-                || type.equalsIgnoreCase("tinyint") || type.equalsIgnoreCase("smallint"); // TODO 待提交githbub。
+                || type.equalsIgnoreCase("numeric") || type.toLowerCase().startsWith("decimal")
+                || type.equalsIgnoreCase("real") || type.toLowerCase().startsWith("uint")
+                || type.toLowerCase().startsWith("int") || type.equalsIgnoreCase("tinyint")
+                || type.equalsIgnoreCase("smallint"); // TODO 待提交githbub。
     }
 
     private String getName(String nameEn) {
@@ -140,7 +141,7 @@ public class QueryUtils {
     }
 
     public QueryStatement unionAll(QueryMultiStructReq queryMultiStructCmd,
-                                   List<QueryStatement> queryStatements) {
+            List<QueryStatement> queryStatements) {
         QueryStatement sqlParser = new QueryStatement();
         StringBuilder unionSqlBuilder = new StringBuilder();
         for (int i = 0; i < queryStatements.size(); i++) {
