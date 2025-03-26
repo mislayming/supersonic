@@ -97,13 +97,11 @@ public class DimensionServiceImpl extends ServiceImpl<DimensionDOMapper, Dimensi
         }
         Long modelId = dimensionReqs.get(0).getModelId();
         List<DimensionResp> dimensionResps = getDimensions(modelId);
-        Map<String, DimensionResp> bizNameMap = dimensionResps.stream()
-                .collect(Collectors.toMap(DimensionResp::getBizName, a -> a, (k1, k2) -> k1));
-        Map<String, DimensionResp> nameMap = dimensionResps.stream()
-                .collect(Collectors.toMap(DimensionResp::getName, a -> a, (k1, k2) -> k1));
+        Map<String, DimensionResp> nameMap = dimensionResps.stream().collect(Collectors.toMap(DimensionResp::getName, a -> a, (k1, k2) -> k1));
+        Map<String, DimensionResp> bizNameMap = dimensionResps.stream().collect(Collectors.toMap(DimensionResp::getBizName, a -> a, (k1, k2) -> k1));
 
         List<DimensionReq> dimensionToInsert = Lists.newArrayList();
-        dimensionReqs.stream().forEach(dimension -> {
+        dimensionReqs.forEach(dimension -> {
             if (!bizNameMap.containsKey(dimension.getBizName())
                     && !nameMap.containsKey(dimension.getName())) {
                 dimensionToInsert.add(dimension);

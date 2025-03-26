@@ -31,7 +31,6 @@ import com.tencent.supersonic.headless.server.utils.MetricConverter;
 import com.tencent.supersonic.headless.server.utils.ModelClusterBuilder;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.commons.lang3.builder.EqualsBuilder;
 import org.springframework.beans.BeanUtils;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Lazy;
@@ -46,28 +45,26 @@ import java.util.stream.Collectors;
 public class MetricServiceImpl extends ServiceImpl<MetricDOMapper, MetricDO>
         implements MetricService {
 
-    private MetricRepository metricRepository;
+    private final MetricRepository metricRepository;
 
-    private ModelService modelService;
+    private final ModelService modelService;
 
-    private DimensionService dimensionService;
+    private final DimensionService dimensionService;
 
-    private AliasGenerateHelper aliasGenerateHelper;
+    private final AliasGenerateHelper aliasGenerateHelper;
 
-    private CollectService collectService;
+    private final CollectService collectService;
 
-    private DataSetService dataSetService;
+    private final DataSetService dataSetService;
 
-    private ApplicationEventPublisher eventPublisher;
+    private final ApplicationEventPublisher eventPublisher;
 
-    private TagMetaService tagMetaService;
-
-    private ChatLayerService chatLayerService;
+    private final ChatLayerService chatLayerService;
 
     public MetricServiceImpl(MetricRepository metricRepository, ModelService modelService,
             AliasGenerateHelper aliasGenerateHelper, CollectService collectService,
             DataSetService dataSetService, ApplicationEventPublisher eventPublisher,
-            DimensionService dimensionService, TagMetaService tagMetaService,
+            DimensionService dimensionService,
             @Lazy ChatLayerService chatLayerService) {
         this.metricRepository = metricRepository;
         this.modelService = modelService;
@@ -76,7 +73,6 @@ public class MetricServiceImpl extends ServiceImpl<MetricDOMapper, MetricDO>
         this.collectService = collectService;
         this.dataSetService = dataSetService;
         this.dimensionService = dimensionService;
-        this.tagMetaService = tagMetaService;
         this.chatLayerService = chatLayerService;
     }
 
@@ -104,7 +100,7 @@ public class MetricServiceImpl extends ServiceImpl<MetricDOMapper, MetricDO>
                 .collect(Collectors.toMap(MetricResp::getName, a -> a, (k1, k2) -> k1));
         List<MetricReq> metricToInsert = Lists.newArrayList();
 
-        metricReqs.stream().forEach(metric -> {
+        metricReqs.forEach(metric -> {
             if (!bizNameMap.containsKey(metric.getBizName())
                     && !nameMap.containsKey(metric.getName())) {
                 metricToInsert.add(metric);
@@ -122,6 +118,7 @@ public class MetricServiceImpl extends ServiceImpl<MetricDOMapper, MetricDO>
                 }
             }
         });
+
         if (CollectionUtils.isEmpty(metricToInsert)) {
             return;
         }
@@ -217,7 +214,7 @@ public class MetricServiceImpl extends ServiceImpl<MetricDOMapper, MetricDO>
             classificationsList.addAll(metaBatchReq.getClassifications());
         }
         if (EventType.DELETE.equals(metaBatchReq.getType())) {
-            classificationsList.removeAll(metaBatchReq.getClassifications());
+            metaBatchReq.getClassifications().forEach(classificationsList::remove);
         }
         String classifications = "";
         if (!CollectionUtils.isEmpty(classificationsList)) {
@@ -299,7 +296,7 @@ public class MetricServiceImpl extends ServiceImpl<MetricDOMapper, MetricDO>
             List<ModelResp> modelResps =
                     modelService.getAllModelByDomainIds(pageMetricReq.getDomainIds());
             List<Long> modelIds =
-                    modelResps.stream().map(ModelResp::getId).collect(Collectors.toList());
+                    modelResps.stream().map(ModelResp::getId).toList();
             pageMetricReq.getModelIds().addAll(modelIds);
         }
         metricFilter.setModelIds(pageMetricReq.getModelIds());
@@ -311,9 +308,9 @@ public class MetricServiceImpl extends ServiceImpl<MetricDOMapper, MetricDO>
                         .doSelectPageInfo(() -> queryMetric(metricFilter));
         PageInfo<MetricResp> pageInfo = new PageInfo<>();
         BeanUtils.copyProperties(metricDOPageInfo, pageInfo);
-        List<MetricResp> metricResps = convertList(metricDOPageInfo.getList(), collectIds);
-        fillAdminRes(metricResps, user);
-        pageInfo.setList(metricResps);
+        List<MetricResp> metricResp = convertList(metricDOPageInfo.getList(), collectIds);
+        fillAdminRes(metricResp, user);
+        pageInfo.setList(metricResp);
         return pageInfo;
     }
 
@@ -386,9 +383,9 @@ public class MetricServiceImpl extends ServiceImpl<MetricDOMapper, MetricDO>
             List<String> fields, Set<MetricResp> metricRespFiltered) {
         if (MetricDefineType.METRIC.equals(metricResp.getMetricDefineType())) {
             List<Long> ids = metricResp.getMetricDefineByMetricParams().getMetrics().stream()
-                    .map(MetricParam::getId).collect(Collectors.toList());
+                    .map(MetricParam::getId).toList();
             List<MetricResp> metricById = metricResps.stream()
-                    .filter(metric -> ids.contains(metric.getId())).collect(Collectors.toList());
+                    .filter(metric -> ids.contains(metric.getId())).toList();
             for (MetricResp metric : metricById) {
                 if (filterByField(metricResps, metric, fields, metricRespFiltered)) {
                     metricRespFiltered.add(metricResp);
@@ -405,7 +402,7 @@ public class MetricServiceImpl extends ServiceImpl<MetricDOMapper, MetricDO>
             List<String> fieldNameDepended = measures.stream().map(Measure::getBizName)
                     // measure bizName = model bizName_fieldName
                     .map(name -> name.replaceFirst(metricResp.getModelBizName() + "_", ""))
-                    .collect(Collectors.toList());
+                    .toList();
             if (fields.stream().anyMatch(fieldNameDepended::contains)) {
                 metricRespFiltered.add(metricResp);
                 return true;
@@ -523,7 +520,7 @@ public class MetricServiceImpl extends ServiceImpl<MetricDOMapper, MetricDO>
         }
         for (DrillDownDimension drillDownDimension : modelResp.getDrillDownDimensions()) {
             if (!drillDownDimensions.stream().map(DrillDownDimension::getDimensionId)
-                    .collect(Collectors.toList()).contains(drillDownDimension.getDimensionId())) {
+                    .toList().contains(drillDownDimension.getDimensionId())) {
                 drillDownDimension.setInheritedFromModel(true);
                 drillDownDimensions.add(drillDownDimension);
             }
@@ -737,7 +734,7 @@ public class MetricServiceImpl extends ServiceImpl<MetricDOMapper, MetricDO>
                 .filter(entry -> queryMetricReq.getDimensionNames().contains(entry.getName())
                         || queryMetricReq.getDimensionNames().contains(entry.getBizName())
                         || queryMetricReq.getDimensionIds().contains(entry.getId()))
-                .map(SchemaItem::getBizName).collect(Collectors.toList());
+                .map(SchemaItem::getBizName).toList();
 
         QueryStructReq queryStructReq = new QueryStructReq();
         DateConf dateInfo = queryMetricReq.getDateInfo();
@@ -750,7 +747,7 @@ public class MetricServiceImpl extends ServiceImpl<MetricDOMapper, MetricDO>
         // 5. set aggregators
         List<String> metricBizNames = metricResps.stream()
                 .filter(entry -> modelCluster.getModelIds().contains(entry.getModelId()))
-                .map(SchemaItem::getBizName).collect(Collectors.toList());
+                .map(SchemaItem::getBizName).toList();
         if (CollectionUtils.isEmpty(metricBizNames)) {
             throw new IllegalArgumentException(
                     "Invalid input parameters, unable to obtain valid metrics");
@@ -812,10 +809,10 @@ public class MetricServiceImpl extends ServiceImpl<MetricDOMapper, MetricDO>
             return result;
         }
         Set<Long> metricModelIds =
-                metricResps.stream().map(entry -> entry.getModelId()).collect(Collectors.toSet());
+                metricResps.stream().map(MetricResp::getModelId).collect(Collectors.toSet());
         result.addAll(metricModelIds);
 
-        Set<Long> dimensionModelIds = dimensionResps.stream().map(entry -> entry.getModelId())
+        Set<Long> dimensionModelIds = dimensionResps.stream().map(DimensionResp::getModelId)
                 .collect(Collectors.toSet());
         result.addAll(dimensionModelIds);
         return result;
@@ -841,7 +838,6 @@ public class MetricServiceImpl extends ServiceImpl<MetricDOMapper, MetricDO>
     }
 
     private boolean isChange(MetricReq metricReq, MetricResp metricResp) {
-        boolean isNameChange = !metricReq.getName().equals(metricResp.getName());
-        return isNameChange;
+        return !metricReq.getName().equals(metricResp.getName());
     }
 }

@@ -46,6 +46,7 @@ public class HanlpHelper {
             synchronized (HanlpHelper.class) {
                 if (segment == null) {
                     Segment newSegment = null;
+                    //HanLPSegmentProvider hanLPSegmentProvider = new MDVHanLPSegmentProvider();
                     HanLPSegmentProvider hanLPSegmentProvider = ContextUtils.getBeansOfType(HanLPSegmentProvider.class).values().stream().findFirst().orElse(null);
                     if (hanLPSegmentProvider != null) {
                         newSegment = hanLPSegmentProvider.getSegment();

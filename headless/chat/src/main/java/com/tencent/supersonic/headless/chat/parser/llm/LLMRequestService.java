@@ -43,8 +43,8 @@ public class LLMRequestService {
         String queryText = queryCtx.getRequest().getQueryText();
 
         LLMReq.LLMSchema llmSchema = new LLMReq.LLMSchema();
-        int fieldCntThreshold =
-                Integer.valueOf(parserConfig.getParameterValue(PARSER_FIELDS_COUNT_THRESHOLD));
+        int fieldCntThreshold = Integer.parseInt(parserConfig.getParameterValue(PARSER_FIELDS_COUNT_THRESHOLD));
+        fieldCntThreshold = 2;
         if (queryCtx.getMapInfo().getMatchedElements(dataSetId).size() <= fieldCntThreshold) {
             llmSchema.setMetrics(queryCtx.getSemanticSchema().getMetrics());
             llmSchema.setDimensions(queryCtx.getSemanticSchema().getDimensions());

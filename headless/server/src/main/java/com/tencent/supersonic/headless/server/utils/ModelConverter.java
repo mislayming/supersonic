@@ -53,7 +53,7 @@ public class ModelConverter {
                 : Arrays.asList(modelDO.getViewOrg().split(",")));
         modelResp.setDrillDownDimensions(
                 JsonUtil.toList(modelDO.getDrillDownDimensions(), DrillDownDimension.class));
-        modelResp.setModelDetail(JsonUtil.toObject(modelDO.getModelDetail(), ModelDetail.class));
+        modelResp.setModelDetail(toModelDetail(modelDO));
         modelResp.setExt(JsonUtil.toObject(modelDO.getExt(), Map.class));
         return modelResp;
     }
@@ -99,6 +99,7 @@ public class ModelConverter {
         dimensionReq.setName(dim.getName());
         dimensionReq.setBizName(dim.getBizName());
         dimensionReq.setDescription(dim.getName());
+
         if (DimensionType.isTimeDimension(dim.getType())) {
             dimensionReq.setSemanticType(SemanticType.DATE.name());
             Map<String, Object> map = new HashMap<>();
@@ -107,11 +108,11 @@ public class ModelConverter {
         } else {
             dimensionReq.setSemanticType(SemanticType.CATEGORY.name());
         }
+
         dimensionReq.setModelId(modelDO.getId());
         dimensionReq.setExpr(dim.getExpr());
         dimensionReq.setType(dim.getType().name());
-        dimensionReq
-                .setDescription(Objects.isNull(dim.getDescription()) ? "" : dim.getDescription());
+        dimensionReq.setDescription(Objects.isNull(dim.getDescription()) ? "" : dim.getDescription());
         dimensionReq.setTypeParams(dim.getTypeParams());
         return dimensionReq;
     }
@@ -144,8 +145,7 @@ public class ModelConverter {
         return dimensionReq;
     }
 
-    public static ModelReq convert(ModelSchema modelSchema, ModelBuildReq modelBuildReq,
-            String tableName) {
+    public static ModelReq convert(ModelSchema modelSchema, ModelBuildReq modelBuildReq, String tableName) {
         ModelReq modelReq = new ModelReq();
         modelReq.setName(modelBuildReq.getName());
         modelReq.setBizName(modelBuildReq.getBizName());
@@ -163,7 +163,7 @@ public class ModelConverter {
             FieldType fieldType = columnSchema.getFiledType();
             if (getIdentifyType(fieldType) != null) {
                 Identify identify = new Identify(columnSchema.getName(),
-                        getIdentifyType(fieldType).name(), columnSchema.getColumnName(), 1);
+                        Objects.requireNonNull(getIdentifyType(fieldType)).name(), columnSchema.getColumnName(), 1);
                 modelDetail.getIdentifiers().add(identify);
             } else if (FieldType.measure.equals(fieldType)) {
                 Measure measure = new Measure(columnSchema.getName(), columnSchema.getColumnName(),
@@ -214,7 +214,9 @@ public class ModelConverter {
         if (CollectionUtils.isEmpty(modelDetail.getDimensions())) {
             return Lists.newArrayList();
         }
-        return modelDetail.getDimensions().stream().filter(ModelConverter::isCreateDimension)
+
+        return modelDetail.getDimensions().stream()
+                .filter(ModelConverter::isCreateDimension)
                 .collect(Collectors.toList());
     }
 
@@ -222,7 +224,9 @@ public class ModelConverter {
         if (CollectionUtils.isEmpty(modelDetail.getIdentifiers())) {
             return Lists.newArrayList();
         }
-        return modelDetail.getIdentifiers().stream().filter(ModelConverter::isCreateDimension)
+
+        return modelDetail.getIdentifiers().stream()
+                .filter(ModelConverter::isCreateDimension)
                 .collect(Collectors.toList());
     }
 
@@ -235,31 +239,38 @@ public class ModelConverter {
     }
 
     public static List<DimensionReq> convertDimensionList(ModelDO modelDO) {
-        List<DimensionReq> dimensionReqs = Lists.newArrayList();
-        ModelDetail modelDetail =
-                JSONObject.parseObject(modelDO.getModelDetail(), ModelDetail.class);
+
+        ModelDetail modelDetail = toModelDetail(modelDO);
         List<Dimension> dims = getDimToCreateDimension(modelDetail);
+
+        List<DimensionReq> dimensionReqs = Lists.newArrayList();
         if (!CollectionUtils.isEmpty(dims)) {
-            dimensionReqs = dims.stream().filter(dim -> StringUtils.isNotBlank(dim.getName()))
-                    .map(dim -> convert(dim, modelDO)).collect(Collectors.toList());
+            dimensionReqs = dims.stream()
+                    .filter(dim -> StringUtils.isNotBlank(dim.getName()))
+                    .map(dim -> convert(dim, modelDO))
+                    .collect(Collectors.toList());
         }
+
         List<Identify> identifies = getIdentityToCreateDimension(modelDetail);
-        if (CollectionUtils.isEmpty(identifies)) {
-            return dimensionReqs;
+        if (!CollectionUtils.isEmpty(identifies)) {
+            dimensionReqs.addAll(identifies.stream().map(identify -> convert(identify, modelDO)).toList());
         }
-        dimensionReqs.addAll(identifies.stream().map(identify -> convert(identify, modelDO))
-                .collect(Collectors.toList()));
+
         return dimensionReqs;
     }
 
+
+
+    // 数据库存储的是 JSON，反向解析回来
     public static List<MetricReq> convertMetricList(ModelDO modelDO) {
-        ModelDetail modelDetail =
-                JSONObject.parseObject(modelDO.getModelDetail(), ModelDetail.class);
+        ModelDetail modelDetail = toModelDetail(modelDO);
         List<Measure> measures = getMeasureToCreateMetric(modelDetail);
         if (CollectionUtils.isEmpty(measures)) {
             return Lists.newArrayList();
         }
-        return measures.stream().map(measure -> convert(measure, modelDO))
+
+        return measures.stream()
+                .map(measure -> convert(measure, modelDO))
                 .collect(Collectors.toList());
     }
 
@@ -298,5 +309,9 @@ public class ModelConverter {
         // }
         BeanMapper.mapper(modelReq.getModelDetail(), modelDetail);
         return modelDetail;
+    }
+
+    private static ModelDetail toModelDetail(ModelDO modelDO) {
+        return JSONObject.parseObject(modelDO.getModelDetail(), ModelDetail.class);
     }
 }

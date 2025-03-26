@@ -74,23 +74,18 @@ public class DimensionConverter {
         return dimensionDO;
     }
 
-    public static DimensionResp convert2DimensionResp(DimensionDO dimensionDO,
-            Map<Long, ModelResp> modelRespMap) {
+    public static DimensionResp convert2DimensionResp(DimensionDO dimensionDO, Map<Long, ModelResp> modelRespMap) {
         DimensionResp dimensionResp = new DimensionResp();
         BeanUtils.copyProperties(dimensionDO, dimensionResp);
-        dimensionResp.setModelName(
-                modelRespMap.getOrDefault(dimensionResp.getModelId(), new ModelResp()).getName());
-        dimensionResp.setModelBizName(modelRespMap
-                .getOrDefault(dimensionResp.getModelId(), new ModelResp()).getBizName());
+        dimensionResp.setModelName(modelRespMap.getOrDefault(dimensionResp.getModelId(), new ModelResp()).getName());
+        dimensionResp.setModelBizName(modelRespMap.getOrDefault(dimensionResp.getModelId(), new ModelResp()).getBizName());
         if (dimensionDO.getDefaultValues() != null) {
-            dimensionResp.setDefaultValues(
-                    JSONObject.parseObject(dimensionDO.getDefaultValues(), List.class));
+            dimensionResp.setDefaultValues(JSONObject.parseObject(dimensionDO.getDefaultValues(), List.class));
         }
-        dimensionResp.setModelFilterSql(modelRespMap
-                .getOrDefault(dimensionResp.getModelId(), new ModelResp()).getFilterSql());
+
+        dimensionResp.setModelFilterSql(modelRespMap.getOrDefault(dimensionResp.getModelId(), new ModelResp()).getFilterSql());
         if (StringUtils.isNotEmpty(dimensionDO.getDimValueMaps())) {
-            dimensionResp.setDimValueMaps(
-                    JsonUtil.toList(dimensionDO.getDimValueMaps(), DimValueMap.class));
+            dimensionResp.setDimValueMaps(JsonUtil.toList(dimensionDO.getDimValueMaps(), DimValueMap.class));
         }
         if (StringUtils.isNotEmpty(dimensionDO.getDataType())) {
             dimensionResp.setDataType(DataTypeEnums.of(dimensionDO.getDataType()));
@@ -99,14 +94,13 @@ public class DimensionConverter {
             dimensionResp.setExt(JSONObject.parseObject(dimensionDO.getExt(), Map.class));
         }
         if (StringUtils.isNoneBlank(dimensionDO.getTypeParams())) {
-            dimensionResp.setTypeParams(JSONObject.parseObject(dimensionDO.getTypeParams(),
-                    DimensionTimeTypeParams.class));
+            dimensionResp.setTypeParams(JSONObject.parseObject(dimensionDO.getTypeParams(), DimensionTimeTypeParams.class));
         }
+
         dimensionResp.setType(getType(dimensionDO.getType()));
         dimensionResp.setTypeEnum(TypeEnums.DIMENSION);
         dimensionResp.setIsTag(dimensionDO.getIsTag());
-        dimensionResp.setDomainId(modelRespMap
-                .getOrDefault(dimensionResp.getModelId(), new ModelResp()).getDomainId());
+        dimensionResp.setDomainId(modelRespMap.getOrDefault(dimensionResp.getModelId(), new ModelResp()).getDomainId());
         return dimensionResp;
     }
 

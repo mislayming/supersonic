@@ -121,8 +121,7 @@ public class NL2SQLParser implements ChatQueryParser {
                     candidateParses.add(parseResp.getSelectedParses().get(0));
                 }
                 ParserConfig parserConfig = ContextUtils.getBean(ParserConfig.class);
-                int parserShowCount =
-                        Integer.parseInt(parserConfig.getParameterValue(PARSER_SHOW_COUNT));
+                int parserShowCount = Integer.parseInt(parserConfig.getParameterValue(PARSER_SHOW_COUNT));
                 SemanticParseInfo.sort(candidateParses);
                 parseContext.getResponse().setSelectedParses(candidateParses.subList(0,
                         Math.min(parserShowCount, candidateParses.size())));

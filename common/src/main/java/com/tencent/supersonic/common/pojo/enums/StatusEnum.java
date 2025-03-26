@@ -1,5 +1,8 @@
 package com.tencent.supersonic.common.pojo.enums;
 
+import lombok.Getter;
+
+@Getter
 public enum StatusEnum {
     INITIALIZED("INITIALIZED", 0),
     ONLINE("ONLINE", 1),
@@ -8,20 +11,12 @@ public enum StatusEnum {
     UNAVAILABLE("UNAVAILABLE", 4),
     UNKNOWN("UNKNOWN", -1);
 
-    private String status;
-    private Integer code;
+    private final String status;
+    private final Integer code;
 
     StatusEnum(String status, Integer code) {
         this.status = status;
         this.code = code;
-    }
-
-    public String getStatus() {
-        return status;
-    }
-
-    public Integer getCode() {
-        return code;
     }
 
     public static StatusEnum of(String status) {

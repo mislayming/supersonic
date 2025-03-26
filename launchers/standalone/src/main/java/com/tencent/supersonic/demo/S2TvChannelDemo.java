@@ -106,7 +106,9 @@ public class S2TvChannelDemo extends S2BaseDemo {
                 new Dimension("PackageOption", "Package_Option", DimensionType.categorical, 1));
 
         List<Identify> identifiers = new ArrayList<>();
-        identifiers.add(new Identify("ChannelID", IdentifyType.primary.name(), "id"));
+        Identify identify = new Identify("ChannelID", IdentifyType.primary.name(), "id");
+        identify.setIsCreateDimension(1);
+        identifiers.add(identify);
         modelDetail.setIdentifiers(identifiers);
 
         List<Measure> measures = new ArrayList<>();
