@@ -124,9 +124,12 @@ public class AtomicFieldExtractor {
                 "ORDER BY category, viewers DESC " +
                 "LIMIT 100";
 
+        String sql2 = """
+                SELECT ChannelID FROM TVChannelDataset WHERE ChannelID NOT IN (SELECT ChannelID FROM TVChannelDataset WHERE DirectedBy = 'Ben Jones')
+                """;
         try {
             // 使用新方法提取结果
-            ExtractResult result = extractFromSql(sql);
+            ExtractResult result = extractFromSql(sql2);
             
             // 输出结果
             System.out.println(result);
@@ -258,12 +261,81 @@ public class AtomicFieldExtractor {
                         resolveFieldInJoin((SqlJoin) select.getFrom(), fieldName);
                     }
                     // 处理其他情况...
+                } 
+                // 处理比较表达式和其他非SELECT上下文
+                else if (currentParentKind == SqlKind.EQUALS 
+                        || currentParentKind == SqlKind.NOT_EQUALS
+                        || currentParentKind == SqlKind.LESS_THAN
+                        || currentParentKind == SqlKind.LESS_THAN_OR_EQUAL
+                        || currentParentKind == SqlKind.GREATER_THAN
+                        || currentParentKind == SqlKind.GREATER_THAN_OR_EQUAL
+                        || currentParentKind == SqlKind.IN
+                        || currentParentKind == SqlKind.NOT_IN
+                        || currentParentKind == SqlKind.LIKE) {
+                    // 在比较表达式中，尝试从父SELECT上下文中获取表
+                    for (int i = contextStack.size() - 1; i >= 0; i--) {
+                        if (contextStack.get(i) instanceof SqlSelect) {
+                            SqlSelect parentSelect = (SqlSelect) contextStack.get(i);
+                            // 找到最近的SELECT的FROM表
+                            if (parentSelect.getFrom() instanceof SqlIdentifier) {
+                                String tableName = ((SqlIdentifier) parentSelect.getFrom()).toString();
+                                if (realTables.contains(tableName)) {
+                                    addTableField(tableName, fieldName);
+                                    return;
+                                }
+                            } else if (parentSelect.getFrom() instanceof SqlJoin) {
+                                resolveFieldInJoin((SqlJoin) parentSelect.getFrom(), fieldName);
+                                return;
+                            } else if (parentSelect.getFrom() instanceof SqlBasicCall) {
+                                // 处理FROM中的子查询或其他复杂表达式
+                                findTablesInFromClause(parentSelect.getFrom(), fieldName);
+                                return;
+                            }
+                        }
+                    }
                 }
             }
             
             // 如果无法确定表，将字段添加到"未知表"类别
             if (!fieldToContext.containsKey(fieldName)) {
+                // 尝试将字段关联到所有真实表
+                for (String tableName : realTables) {
+                    addTableField(tableName, fieldName);
+                }
+                
                 fieldToContext.put(fieldName, "未知表");
+            }
+        }
+        
+        /**
+         * 在FROM子句中查找表并关联字段
+         */
+        private void findTablesInFromClause(SqlNode fromNode, String fieldName) {
+            Set<String> possibleTables = new HashSet<>();
+            
+            if (fromNode instanceof SqlIdentifier) {
+                possibleTables.add(((SqlIdentifier) fromNode).toString());
+            } else if (fromNode instanceof SqlJoin) {
+                collectTablesFromJoin((SqlJoin) fromNode, possibleTables);
+            } else if (fromNode instanceof SqlBasicCall) {
+                SqlBasicCall call = (SqlBasicCall) fromNode;
+                if (call.getKind() == SqlKind.AS && call.operandCount() >= 2) {
+                    findTablesInFromClause(call.operand(0), fieldName);
+                } else {
+                    // 处理子查询等复杂表达式
+                    for (SqlNode operand : call.getOperandList()) {
+                        if (operand instanceof SqlSelect) {
+                            findTablesInFromClause(((SqlSelect) operand).getFrom(), fieldName);
+                        }
+                    }
+                }
+            }
+            
+            // 将字段添加到所有可能的真实表
+            for (String tableName : possibleTables) {
+                if (realTables.contains(tableName)) {
+                    addTableField(tableName, fieldName);
+                }
             }
         }
         
@@ -408,6 +480,37 @@ public class AtomicFieldExtractor {
                     // 处理CASE表达式
                     visitCase(call);
                     break;
+                    
+                case EQUALS: 
+                case NOT_EQUALS:
+                case LESS_THAN:
+                case LESS_THAN_OR_EQUAL:
+                case GREATER_THAN:
+                case GREATER_THAN_OR_EQUAL:
+                case LIKE:
+                    // 处理比较表达式，确保两侧的字段都被提取
+                    if (call.operandCount() >= 2) {
+                        // 确保两侧的操作数都被访问到
+                        for (SqlNode operand : call.getOperandList()) {
+                            if (operand != null) {
+                                operand.accept(this);
+                            }
+                        }
+                    }
+                    break;
+                    
+                case IN:
+                case NOT_IN:
+                    // 特别处理IN表达式，确保子查询中的字段也被提取
+                    if (call.operandCount() >= 2) {
+                        // 左侧是字段
+                        call.operand(0).accept(this);
+                        
+                        // 右侧可能是子查询或值列表
+                        call.operand(1).accept(this);
+                    }
+                    break;
+                    
                 case UNION:
                 case INTERSECT:
                 case EXCEPT:
