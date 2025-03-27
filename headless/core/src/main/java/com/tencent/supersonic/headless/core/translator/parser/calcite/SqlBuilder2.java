@@ -64,7 +64,7 @@ public class SqlBuilder2 {
         SqlValidatorScope scope = SchemaBuilder.getScope(schema);
         this.scope = scope;
 
-        List<DataModel> dataModels = DataModelNode.getQueryDataModels(scope, schema, ontologyQuery);
+        List<DataModel> dataModels = DataModelNode.getQueryDataModels(queryStatement, scope, schema);
         // List<DataModel> dataModels = DataModelNode.getQueryDataModels(queryStatement);
         if (dataModels.isEmpty()) {
             throw new Exception("data model not found");

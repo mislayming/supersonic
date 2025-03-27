@@ -1,14 +1,22 @@
 package com.tencent.supersonic.headless.core.translator;
 
-import com.tencent.supersonic.common.calcite.SqlIdentifierQuoteUtil;
-import com.tencent.supersonic.common.calcite.SqlMergeWithUtils;
+import com.tencent.supersonic.common.calcite.*;
 import com.tencent.supersonic.common.pojo.enums.EngineType;
+import com.tencent.supersonic.headless.core.pojo.Ontology;
 import com.tencent.supersonic.headless.core.pojo.QueryStatement;
 import com.tencent.supersonic.headless.core.pojo.SqlQuery;
 import com.tencent.supersonic.headless.core.translator.optimizer.QueryOptimizer;
 import com.tencent.supersonic.headless.core.translator.parser.QueryParser;
+import com.tencent.supersonic.headless.core.translator.parser.calcite.RuntimeOptions;
+import com.tencent.supersonic.headless.core.translator.parser.calcite.S2CalciteSchema;
+import com.tencent.supersonic.headless.core.translator.parser.calcite.SchemaBuilder;
+import com.tencent.supersonic.headless.core.translator.parser.calcite.node.SemanticNode;
 import com.tencent.supersonic.headless.core.utils.ComponentFactory;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.calcite.sql.SqlNode;
+import org.apache.calcite.sql.parser.SqlParser;
+import org.apache.calcite.sql.validate.SqlValidatorScope;
+import org.apache.calcite.schema.Table;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.slf4j.Logger;
@@ -17,6 +25,9 @@ import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Component
@@ -35,8 +46,7 @@ public class DefaultSemanticTranslator implements SemanticTranslator {
                     log.debug("QueryConverter accept [{}]", parser.getClass().getName());
                     parser.parse(queryStatement);
                     String innerSQL = StringUtils.replace(queryStatement.getSql(), "\n", " ");
-                    String querySQL =
-                            StringUtils.replace(queryStatement.getSqlQuery().getSql(), "\n", " ");
+                    String querySQL = StringUtils.replace(queryStatement.getSqlQuery().getSql(), "\n", " ");
                     String placeholder = "                         ";
                     keyPipelineLog.info(
                             "\t\t {} translate parser[{}] -> \n{}\t\t\t\t - querySQL: {} \n{}\t\t\t\t - innerSQL: {}",
@@ -115,6 +125,25 @@ public class DefaultSemanticTranslator implements SemanticTranslator {
             }
             queryStatement.setSql(ontologyQuerySql);
         }
+
+
+        String schemaQualify = "DATASET_" + queryStatement.getDataSetId();
+        queryStatement.setSql(replaceQualify(queryStatement, schemaQualify, queryStatement.getOntology().getDatabaseType()));
+    }
+
+
+    private String replaceQualify(QueryStatement statement, String schemaQualify, EngineType engineType) {
+        SemanticSqlDialect dialect = SqlDialectFactory.getSqlDialect(engineType);
+
+        String quoteString = dialect.getIdentifierQuoteString();
+
+        // 确保引号字符串不为空，默认使用反引号
+        if (quoteString == null || quoteString.isEmpty()) {
+            quoteString = "`";
+        }
+
+        String schemaField = quoteString + schemaQualify + quoteString + ".";
+        return StringUtils.replace(statement.getSql(), schemaField, "");
     }
 
 }

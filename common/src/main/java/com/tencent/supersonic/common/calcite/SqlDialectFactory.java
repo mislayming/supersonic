@@ -46,6 +46,7 @@ public class SqlDialectFactory {
         if (Objects.isNull(semanticSqlDialect)) {
             return new SemanticSqlDialect(DEFAULT_CONTEXT);
         }
+
         return semanticSqlDialect;
     }
 }

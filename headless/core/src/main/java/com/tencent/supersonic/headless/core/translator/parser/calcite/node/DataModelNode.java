@@ -2,9 +2,11 @@ package com.tencent.supersonic.headless.core.translator.parser.calcite.node;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
+import com.tencent.supersonic.common.calcite.AtomicFieldExtractor;
 import com.tencent.supersonic.common.calcite.Configuration;
 import com.tencent.supersonic.common.jsqlparser.SqlSelectHelper;
 import com.tencent.supersonic.common.pojo.enums.EngineType;
+import com.tencent.supersonic.headless.api.pojo.SchemaElementMatch;
 import com.tencent.supersonic.headless.core.pojo.*;
 import com.tencent.supersonic.headless.core.translator.parser.calcite.S2CalciteSchema;
 import com.tencent.supersonic.headless.core.translator.parser.calcite.SchemaBuilder;
@@ -174,17 +176,34 @@ public class DataModelNode extends SemanticNode {
         }
     }
 
-    public static List<DataModel> getQueryDataModels(SqlValidatorScope scope,
-            S2CalciteSchema schema, OntologyQuery queryParam) throws Exception {
+    public static List<DataModel> getQueryDataModels(QueryStatement queryStatement, SqlValidatorScope scope, S2CalciteSchema schema) throws Exception {
+
+
         Ontology ontology = schema.getOntology();
+//        OntologyQuery ontologyQuery = queryStatement.getOntologyQuery();
+
+
+
+        Set<Long> modeId = queryStatement.getSchemaElements().stream().map(t-> t.getElement().getModel()).collect(Collectors.toSet());
+        if(modeId.isEmpty()) {
+            // 这个逻辑是为了兼容启动的时候，期望获取 dim-value 的请求过来的，真他们的乱
+            return ontology.getDataModelMap().values().stream().toList();
+        }
+//        Map<String, DataModel> dataModelMap = new HashMap<>();
+        return ontology.getDataModelMap().values().stream().filter(
+                model -> modeId.contains(model.getId())
+        ).toList();
+        /*
         // get query measures and dimensions
         Set<String> queryMeasures = new HashSet<>();
         Set<String> queryDimensions = new HashSet<>();
-        getQueryDimensionMeasure(ontology, queryParam, queryDimensions, queryMeasures);
-        mergeQueryFilterDimensionMeasure(ontology, queryParam, queryDimensions, queryMeasures,
-                scope);
 
-        Map<String, DataModel> dataModelMap = new HashMap<>();
+
+        // 填充相关字段
+        getQueryDimensionMeasure(ontology, ontologyQuery, queryDimensions, queryMeasures);
+        mergeQueryFilterDimensionMeasure(ontology, ontologyQuery, queryDimensions, queryMeasures, scope);
+
+
         ontology.getDataModelMap().forEach((modelName, model) -> {
             model.getMeasures().forEach(m -> {
                 if (!dataModelMap.containsKey(modelName) && queryMeasures.contains(m.getName())) {
@@ -207,6 +226,7 @@ public class DataModelNode extends SemanticNode {
         });
 
         return new ArrayList<>(dataModelMap.values());
+         */
 
         // for (Map.Entry<String, DataModel> entry : ontology.getDataModelMap().entrySet()) {
         // Set<String> sourceMeasure = entry.getValue().getMeasures().stream()

@@ -1,9 +1,13 @@
 package com.tencent.supersonic.headless.core.pojo;
 
+import com.tencent.supersonic.headless.api.pojo.SchemaElementMatch;
 import com.tencent.supersonic.headless.api.pojo.response.SemanticSchemaResp;
 import lombok.Data;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Triple;
+
+import java.util.ArrayList;
+import java.util.List;
 
 @Data
 public class QueryStatement {
@@ -23,6 +27,7 @@ public class QueryStatement {
     private SemanticSchemaResp semanticSchema;
     private Integer limit = 1000;
     private Boolean isTranslated = false;
+    private List<SchemaElementMatch> schemaElements;
 
     public boolean isOk() {
         return StringUtils.isBlank(errMsg) && StringUtils.isNotBlank(sql);

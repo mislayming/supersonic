@@ -150,7 +150,7 @@ public class ChatWorkflowEngine {
     private void performTranslating(ChatQueryContext queryCtx, ParseResp parseResult) {
         keyPipelineLog.info("translating stage:");
         List<SemanticParseInfo> semanticParseInfos = queryCtx.getCandidateQueries().stream()
-                .map(SemanticQuery::getParseInfo).collect(Collectors.toList());
+                .map(SemanticQuery::getParseInfo).toList();
         List<String> errorMsg = new ArrayList<>();
         if (StringUtils.isNotBlank(parseResult.getErrorMsg())) {
             errorMsg.add(parseResult.getErrorMsg());
@@ -167,8 +167,7 @@ public class ChatWorkflowEngine {
                 }
                 semanticQuery.setParseInfo(parseInfo);
                 SemanticQueryReq semanticQueryReq = semanticQuery.buildSemanticQueryReq();
-                SemanticLayerService queryService =
-                        ContextUtils.getBean(SemanticLayerService.class);
+                SemanticLayerService queryService = ContextUtils.getBean(SemanticLayerService.class);
 
                 SemanticTranslateResp explain =
                         queryService.translate(semanticQueryReq, queryCtx.getRequest().getUser());

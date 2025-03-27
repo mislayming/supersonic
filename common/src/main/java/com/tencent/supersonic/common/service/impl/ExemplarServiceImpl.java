@@ -90,7 +90,7 @@ public class ExemplarServiceImpl implements ExemplarService, CommandLineRunner {
             InputStream inputStream = resource.getInputStream();
             List<Text2SQLExemplar> exemplars = objectMapper.readValue(inputStream, valueTypeRef);
             String collection = embeddingConfig.getText2sqlCollectionName();
-            exemplars.stream().forEach(e -> storeExemplar(collection, e));
+            exemplars.forEach(e -> storeExemplar(collection, e));
         } catch (Exception e) {
             log.error("Failed to load system exemplars", e);
         }

@@ -3,8 +3,9 @@ package com.tencent.supersonic.headless.core.translator.parser;
 import com.alibaba.fastjson.JSONObject;
 import com.tencent.supersonic.headless.core.pojo.Ontology;
 import com.tencent.supersonic.headless.core.pojo.QueryStatement;
-import com.tencent.supersonic.headless.core.translator.parser.calcite.*;
-import com.tencent.supersonic.headless.core.translator.parser.calcite.render.Renderer;
+import com.tencent.supersonic.headless.core.translator.parser.calcite.RuntimeOptions;
+import com.tencent.supersonic.headless.core.translator.parser.calcite.S2CalciteSchema;
+import com.tencent.supersonic.headless.core.translator.parser.calcite.SqlBuilder2;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.io.FileUtils;
 import org.springframework.stereotype.Component;
@@ -39,12 +40,14 @@ public class OntologyQueryParser implements QueryParser {
         if (newBuilder) {
             SqlBuilder2 sqlBuilder = new SqlBuilder2(semanticSchema);
             sql = sqlBuilder.buildOntologySql(queryStatement);
-        } else {
-            SqlBuilder sqlBuilder = new SqlBuilder(semanticSchema);
-            sql = sqlBuilder.buildOntologySql(queryStatement);
         }
-        System.out.println("-------final--------");
-        System.out.println(Renderer.simplifySQL(sql));
+//        else {
+//            SqlBuilder sqlBuilder = new SqlBuilder(semanticSchema);
+//            sql = sqlBuilder.buildOntologySql(queryStatement);
+//        }
+
+//        System.out.println("-------final--------");
+//        System.out.println(Renderer.simplifySQL(sql));
         queryStatement.setSql(sql);
     }
 

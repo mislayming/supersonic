@@ -14,6 +14,7 @@ import java.util.stream.Collectors;
 @Data
 public class Ontology {
 
+    // TODO, 这里的 metrics 没有带有模型 ID， 最新的版本其实这里改过了，不过对象也改了。 我们得自己修改
     private List<Metric> metrics = new ArrayList<>();
     private Map<String, DataModel> dataModelMap = new HashMap<>();
     private Map<String, List<Dimension>> dimensionMap = new HashMap<>();

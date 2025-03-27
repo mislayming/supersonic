@@ -7,7 +7,7 @@ import com.tencent.supersonic.headless.api.pojo.response.SqlParserResp;
 import com.tencent.supersonic.headless.core.pojo.OntologyQuery;
 import com.tencent.supersonic.headless.core.pojo.QueryStatement;
 import com.tencent.supersonic.headless.core.translator.parser.calcite.S2CalciteSchema;
-import com.tencent.supersonic.headless.core.translator.parser.calcite.SqlBuilder;
+import com.tencent.supersonic.headless.core.translator.parser.calcite.SqlBuilder2;
 import com.tencent.supersonic.headless.server.manager.SemanticSchemaManager;
 import com.tencent.supersonic.headless.server.pojo.yaml.*;
 import lombok.extern.slf4j.Slf4j;
@@ -28,7 +28,7 @@ class HeadlessParserServiceTest {
                 sqlParser.setErrMsg("headlessSchema not found");
                 return sqlParser;
             }
-            SqlBuilder aggBuilder = new SqlBuilder(semanticSchema);
+            SqlBuilder2 aggBuilder = new SqlBuilder2(semanticSchema);
             QueryStatement queryStatement = new QueryStatement();
             queryStatement.setOntologyQuery(ontologyQuery);
             String sql = aggBuilder.buildOntologySql(queryStatement);

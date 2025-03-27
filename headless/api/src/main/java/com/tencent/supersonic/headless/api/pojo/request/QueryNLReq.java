@@ -34,15 +34,13 @@ public class QueryNLReq extends SemanticQueryReq implements Serializable {
 
     @Override
     public String toCustomizedString() {
-        StringBuilder stringBuilder = new StringBuilder("{");
-        stringBuilder.append("\"queryText\":").append(dataSetId);
-        stringBuilder.append("\"dataSetId\":").append(dataSetId);
-        stringBuilder.append("\"modelIds\":").append(modelIds);
-        stringBuilder.append(",\"params\":").append(params);
-        stringBuilder.append(",\"cacheInfo\":").append(cacheInfo);
-        stringBuilder.append(",\"mapMode\":").append(mapModeEnum);
-        stringBuilder.append(",\"dataType\":").append(queryDataType);
-        stringBuilder.append('}');
-        return stringBuilder.toString();
+        return "{" + "\"queryText\":" + dataSetId +
+                "\"dataSetId\":" + dataSetId +
+                "\"modelIds\":" + modelIds +
+                ",\"params\":" + params +
+                ",\"cacheInfo\":" + cacheInfo +
+                ",\"mapMode\":" + mapModeEnum +
+                ",\"dataType\":" + queryDataType +
+                '}';
     }
 }

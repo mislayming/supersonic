@@ -18,7 +18,8 @@ public abstract class BaseSemanticQuery implements SemanticQuery, Serializable {
 
     @Override
     public SemanticQueryReq buildSemanticQueryReq() {
-        return QueryReqBuilder.buildS2SQLReq(parseInfo.getSqlInfo(), parseInfo.getDataSetId());
+
+        return QueryReqBuilder.buildS2SQLReq(parseInfo.getSqlInfo(), parseInfo.getDataSetId(), parseInfo.getElementMatches());
     }
 
 }

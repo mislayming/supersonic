@@ -51,7 +51,7 @@ public class StructQueryParser implements QueryParser {
         OntologyQuery ontologyQuery = new OntologyQuery();
         ontologyQuery.getDimensions().addAll(structQuery.getGroups());
         ontologyQuery.getMetrics().addAll(structQuery.getAggregators().stream()
-                .map(Aggregator::getColumn).collect(Collectors.toList()));
+                .map(Aggregator::getColumn).toList());
         String where = sqlGenerateUtils.generateWhere(structQuery, null);
         ontologyQuery.setWhere(where);
         if (ontologyQuery.getMetrics().isEmpty()) {

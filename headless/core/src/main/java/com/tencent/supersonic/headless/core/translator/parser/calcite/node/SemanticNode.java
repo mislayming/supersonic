@@ -14,21 +14,7 @@ import org.apache.calcite.plan.hep.HepProgramBuilder;
 import org.apache.calcite.rel.RelNode;
 import org.apache.calcite.rel.rel2sql.RelToSqlConverter;
 import org.apache.calcite.rel.rules.CoreRules;
-import org.apache.calcite.sql.JoinType;
-import org.apache.calcite.sql.SqlAsOperator;
-import org.apache.calcite.sql.SqlBasicCall;
-import org.apache.calcite.sql.SqlBinaryOperator;
-import org.apache.calcite.sql.SqlCall;
-import org.apache.calcite.sql.SqlIdentifier;
-import org.apache.calcite.sql.SqlJoin;
-import org.apache.calcite.sql.SqlKind;
-import org.apache.calcite.sql.SqlLiteral;
-import org.apache.calcite.sql.SqlNode;
-import org.apache.calcite.sql.SqlNodeList;
-import org.apache.calcite.sql.SqlOperator;
-import org.apache.calcite.sql.SqlSelect;
-import org.apache.calcite.sql.SqlWith;
-import org.apache.calcite.sql.SqlWriterConfig;
+import org.apache.calcite.sql.*;
 import org.apache.calcite.sql.fun.SqlStdOperatorTable;
 import org.apache.calcite.sql.parser.SqlParser;
 import org.apache.calcite.sql.parser.SqlParserPos;
@@ -40,14 +26,7 @@ import org.apache.calcite.util.Litmus;
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
+import java.util.*;
 import java.util.function.UnaryOperator;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -669,22 +648,16 @@ public abstract class SemanticNode {
         try {
             HepProgramBuilder hepProgramBuilder = new HepProgramBuilder();
             SemanticSqlDialect sqlDialect = SqlDialectFactory.getSqlDialect(engineType);
-            hepProgramBuilder.addRuleInstance(
-                    new FilterToGroupScanRule(FilterToGroupScanRule.DEFAULT, schema));
+            hepProgramBuilder.addRuleInstance(new FilterToGroupScanRule(FilterToGroupScanRule.DEFAULT, schema));
 
             hepProgramBuilder.addRuleInstance(CoreRules.AGGREGATE_PROJECT_MERGE);
             hepProgramBuilder.addRuleInstance(CoreRules.AGGREGATE_PROJECT_PULL_UP_CONSTANTS);
-            hepProgramBuilder.addRuleInstance(CoreRules.AGGREGATE_PROJECT_STAR_TABLE);
             hepProgramBuilder.addRuleInstance(CoreRules.AGGREGATE_MERGE);
             hepProgramBuilder.addRuleInstance(CoreRules.AGGREGATE_REMOVE);
-            hepProgramBuilder.addRuleInstance(CoreRules.AGGREGATE_JOIN_JOIN_REMOVE);
-            hepProgramBuilder.addRuleInstance(CoreRules.AGGREGATE_JOIN_REMOVE);
             hepProgramBuilder.addRuleInstance(CoreRules.CALC_MERGE);
             hepProgramBuilder.addRuleInstance(CoreRules.CALC_REMOVE);
             hepProgramBuilder.addRuleInstance(CoreRules.CALC_REDUCE_EXPRESSIONS);
-            hepProgramBuilder.addRuleInstance(CoreRules.CALC_SPLIT);
             hepProgramBuilder.addRuleInstance(CoreRules.EXCHANGE_REMOVE_CONSTANT_KEYS);
-            hepProgramBuilder.addRuleInstance(CoreRules.FILTER_INTO_JOIN);
             hepProgramBuilder.addRuleInstance(CoreRules.FILTER_MERGE);
             hepProgramBuilder.addRuleInstance(CoreRules.FILTER_CALC_MERGE);
             hepProgramBuilder.addRuleInstance(CoreRules.PROJECT_AGGREGATE_MERGE);
@@ -692,52 +665,50 @@ public abstract class SemanticNode {
             hepProgramBuilder.addRuleInstance(CoreRules.PROJECT_JOIN_JOIN_REMOVE);
             hepProgramBuilder.addRuleInstance(CoreRules.PROJECT_JOIN_REMOVE);
             hepProgramBuilder.addRuleInstance(CoreRules.PROJECT_MERGE);
-            hepProgramBuilder.addRuleInstance(CoreRules.PROJECT_MULTI_JOIN_MERGE);
             hepProgramBuilder.addRuleInstance(CoreRules.PROJECT_REMOVE);
-            hepProgramBuilder.addRuleInstance(CoreRules.JOIN_CONDITION_PUSH);
-            hepProgramBuilder.addRuleInstance(CoreRules.JOIN_ASSOCIATE);
 
+            // 可能会使 SQL变得复杂难懂的规则，暂时屏蔽
+            // 1. 连接相关规则 - 可能导致连接结构复杂化
+            //hepProgramBuilder.addRuleInstance(CoreRules.FILTER_INTO_JOIN);
+            //hepProgramBuilder.addRuleInstance(CoreRules.JOIN_CONDITION_PUSH);
+            //hepProgramBuilder.addRuleInstance(CoreRules.JOIN_ASSOCIATE);
 
+            // 2. 引入子查询或复杂结构的规则
+            //hepProgramBuilder.addRuleInstance(CoreRules.PROJECT_MULTI_JOIN_MERGE);
+            //hepProgramBuilder.addRuleInstance(CoreRules.CALC_SPLIT);
+
+            // 3. 这些规则在某些情况下可能增加复杂性
+            //hepProgramBuilder.addRuleInstance(CoreRules.AGGREGATE_PROJECT_STAR_TABLE);
+            //hepProgramBuilder.addRuleInstance(CoreRules.AGGREGATE_JOIN_JOIN_REMOVE);
+            //hepProgramBuilder.addRuleInstance(CoreRules.AGGREGATE_JOIN_REMOVE);
 
             RelOptPlanner relOptPlanner = new HepPlanner(hepProgramBuilder.build());
             RelToSqlConverter converter = new RelToSqlConverter(sqlDialect);
-            SqlValidator sqlValidator = Configuration.getSqlValidator(
-                    scope.getValidator().getCatalogReader().getRootSchema(), engineType);
-            SqlToRelConverter sqlToRelConverter = Configuration.getSqlToRelConverter(scope,
-                    sqlValidator, relOptPlanner, engineType);
-            RelNode sqlRel =
-                    sqlToRelConverter.convertQuery(sqlValidator.validate(sqlNode), false, true).rel;
-            log.debug("RelNode optimize {}",
-                    SemanticNode.getSql(converter.visitRoot(sqlRel).asStatement(), engineType));
+//            SqlValidator sqlValidator = Configuration.getSqlValidator(
+//                    scope.getValidator().getCatalogReader().getRootSchema(), engineType);
+
+            SqlValidator sqlValidator = scope.getValidator();
+            SqlToRelConverter sqlToRelConverter = Configuration.getSqlToRelConverter(scope, sqlValidator, relOptPlanner, engineType);
+            RelNode sqlRel = sqlToRelConverter.convertQuery(sqlValidator.validate(sqlNode), false, true).rel;
+
             relOptPlanner.setRoot(sqlRel);
             RelNode relNode = relOptPlanner.findBestExp();
             return converter.visitRoot(relNode).asStatement();
         } catch (Exception e) {
-            log.error("optimize error {}", e);
+            log.error("optimize error", e);
         }
         return null;
     }
 
     public static SqlBinaryOperator getBinaryOperator(String val) {
-        if (val.equals("=")) {
-            return SqlStdOperatorTable.EQUALS;
-        }
-        if (val.equals(">")) {
-            return SqlStdOperatorTable.GREATER_THAN;
-        }
-        if (val.equals(">=")) {
-            return SqlStdOperatorTable.GREATER_THAN_OR_EQUAL;
-        }
-        if (val.equals("<")) {
-            return SqlStdOperatorTable.LESS_THAN;
-        }
-        if (val.equals("<=")) {
-            return SqlStdOperatorTable.LESS_THAN_OR_EQUAL;
-        }
-        if (val.equals("!=")) {
-            return SqlStdOperatorTable.NOT_EQUALS;
-        }
-        return SqlStdOperatorTable.EQUALS;
+        return switch (val) {
+            case ">" -> SqlStdOperatorTable.GREATER_THAN;
+            case ">=" -> SqlStdOperatorTable.GREATER_THAN_OR_EQUAL;
+            case "<" -> SqlStdOperatorTable.LESS_THAN;
+            case "<=" -> SqlStdOperatorTable.LESS_THAN_OR_EQUAL;
+            case "!=" -> SqlStdOperatorTable.NOT_EQUALS;
+            default -> SqlStdOperatorTable.EQUALS;
+        };
     }
 
     public static SqlLiteral getJoinSqlLiteral(String joinType) {

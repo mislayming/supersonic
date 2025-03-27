@@ -288,6 +288,7 @@ public class S2SemanticLayerService implements SemanticLayerService {
         queryStatement.setDataSetName(queryReq.getDataSetName());
         queryStatement.setSemanticSchema(semanticSchemaResp);
         queryStatement.setOntology(semanticSchemaManager.buildOntology(semanticSchemaResp));
+        queryStatement.setSchemaElements(queryReq.getSchemaElements());
         return queryStatement;
     }
 

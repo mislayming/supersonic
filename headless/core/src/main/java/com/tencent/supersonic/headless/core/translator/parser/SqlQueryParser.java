@@ -60,7 +60,7 @@ public class SqlQueryParser implements QueryParser {
         List<String> allFields = SqlSelectHelper.getAllSelectFields(sqlQuery.getSql());
         List<MetricSchemaResp> metricSchemas = getMetrics(semanticSchemaResp, allFields);
         List<String> metrics =
-                metricSchemas.stream().map(SchemaItem::getBizName).collect(Collectors.toList());
+                metricSchemas.stream().map(SchemaItem::getBizName).toList();
         Set<String> dimensions = getDimensions(semanticSchemaResp, allFields);
         // check if there are fields not matched with any metric or dimension
         // 此处不够严谨: TODO SqlSelectHelper.getAllSelectFields把别名也一起获取了。 确认supersonic如何修改。如: SELECT
@@ -238,13 +238,10 @@ public class SqlQueryParser implements QueryParser {
     /**
      * special process for hanaDB,the sap hana DB don't support the chinese name as the column name,
      * so we need to quote the column name after converting the convertNameToBizName called
-     *
-     * sap hana DB will auto translate the colume to upper case letter if not quoted. also we need
+     * <p>
+     * sap hana DB will auto translate the column to upper case letter if not quoted. also we need
      * to quote the field name if it is a lower case letter.
      *
-     * @param queryStatement
-     * @param sql
-     * @return
      */
     private String replaceSqlFieldsForHanaDB(QueryStatement queryStatement, String sql) {
         SemanticSchemaResp semanticSchemaResp = queryStatement.getSemanticSchema();
@@ -262,21 +259,21 @@ public class SqlQueryParser implements QueryParser {
             }
         });
         String sqlNew = sql;
-        if (fieldNameToBizNameMapQuote.size() > 0) {
+        if (!fieldNameToBizNameMapQuote.isEmpty()) {
             sqlNew = SqlReplaceHelper.replaceFields(sql, fieldNameToBizNameMapQuote, true);
         }
         // replace alias field name
         List<String> asFields = SqlAsHelper.getAsFields(sqlNew);
-        Map<String, String> fieldMapput = new HashMap<>();
+        Map<String, String> fieldMaputo = new HashMap<>();
         for (String asField : asFields) {
             String value = asField;
             if (!value.matches("\".*?\"") && !value.matches("[A-Z0-9_].*?")) {
                 value = "\"" + asField + "\"";
-                fieldMapput.put(asField, value);
+                fieldMaputo.put(asField, value);
             }
         }
-        if (fieldMapput.size() > 0) {
-            sqlNew = SqlReplaceHelper.replaceAliasFieldName(sqlNew, fieldMapput);
+        if (!fieldMaputo.isEmpty()) {
+            sqlNew = SqlReplaceHelper.replaceAliasFieldName(sqlNew, fieldMaputo);
         }
         return sqlNew;
     }

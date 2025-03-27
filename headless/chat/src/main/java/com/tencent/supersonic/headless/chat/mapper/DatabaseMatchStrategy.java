@@ -24,46 +24,44 @@ import java.util.stream.Collectors;
  */
 @Service
 @Slf4j
-public class DatabaseMatchStrategy extends SingleMatchStrategy<DatabaseMapResult> {
-
-    private final ThreadLocal<List<SchemaElement>> allElements =
-            ThreadLocal.withInitial(ArrayList::new);
+public class DatabaseMatchStrategy extends BatchMatchStrategy<DatabaseMapResult> {
 
     @Override
-    public Map<MatchText, List<DatabaseMapResult>> match(ChatQueryContext chatQueryContext,
-            Set<Long> detectDataSetIds) {
-        allElements.set(getSchemaElements(chatQueryContext));
-        return super.match(chatQueryContext, detectDataSetIds);
-    }
-
-    public List<DatabaseMapResult> detectByStep(ChatQueryContext chatQueryContext,
-            Set<Long> detectDataSetIds, String detectSegment, int offset) {
-        if (StringUtils.isBlank(detectSegment)) {
-            return new ArrayList<>();
+    public List<DatabaseMapResult> detectByBatch(ChatQueryContext chatQueryContext, Set<Long> detectDataSetIds, Set<String> detectSegments) {
+        List<SchemaElement> elements = getSchemaElements(chatQueryContext);
+        if (CollectionUtils.isEmpty(elements) || CollectionUtils.isEmpty(detectSegments)) {
+            return List.of();
         }
 
         double metricDimensionThresholdConfig = getThreshold(chatQueryContext);
-        Map<String, Set<SchemaElement>> nameToItems = getNameToItems(allElements.get());
+        metricDimensionThresholdConfig = Math.max(0.6, metricDimensionThresholdConfig);
+        Map<String, Set<SchemaElement>> nameToItems = getNameToItems(elements);
         List<DatabaseMapResult> results = new ArrayList<>();
         for (Entry<String, Set<SchemaElement>> entry : nameToItems.entrySet()) {
             String name = entry.getKey();
-            double similarity = EditDistanceUtils.getSimilarity(detectSegment, name);
-            if (!name.contains(detectSegment) || similarity < metricDimensionThresholdConfig) {
-                continue;
-            }
-            Set<SchemaElement> schemaElements = entry.getValue();
-            if (!CollectionUtils.isEmpty(detectDataSetIds)) {
-                schemaElements = schemaElements.stream().filter(
-                        schemaElement -> detectDataSetIds.contains(schemaElement.getDataSetId()))
-                        .collect(Collectors.toSet());
-            }
-            for (SchemaElement schemaElement : schemaElements) {
-                DatabaseMapResult databaseMapResult = new DatabaseMapResult();
-                databaseMapResult.setDetectWord(detectSegment);
-                databaseMapResult.setName(schemaElement.getName());
-                databaseMapResult.setSimilarity(similarity);
-                databaseMapResult.setSchemaElement(schemaElement);
-                results.add(databaseMapResult);
+
+            for(String detectSegment : detectSegments) {
+                double similarity = EditDistanceUtils.getSimilarity(detectSegment, name);
+
+                // TODO 这里移除字符串包含，都用上了编辑距离了，就不管了。但是可以针对 bizName 再做向量化判断是一个较好的方式
+                if (similarity < metricDimensionThresholdConfig) {
+                    continue;
+                }
+
+                Set<SchemaElement> schemaElements = entry.getValue();
+                if (!CollectionUtils.isEmpty(detectDataSetIds)) {
+                    schemaElements = schemaElements.stream().filter(
+                                    schemaElement -> detectDataSetIds.contains(schemaElement.getDataSetId()))
+                            .collect(Collectors.toSet());
+                }
+                for (SchemaElement schemaElement : schemaElements) {
+                    DatabaseMapResult databaseMapResult = new DatabaseMapResult();
+                    databaseMapResult.setDetectWord(detectSegment);
+                    databaseMapResult.setName(schemaElement.getName());
+                    databaseMapResult.setSimilarity(similarity);
+                    databaseMapResult.setSchemaElement(schemaElement);
+                    results.add(databaseMapResult);
+                }
             }
         }
         return results;
@@ -108,4 +106,6 @@ public class DatabaseMatchStrategy extends SingleMatchStrategy<DatabaseMapResult
             return k1;
         }));
     }
+
+
 }

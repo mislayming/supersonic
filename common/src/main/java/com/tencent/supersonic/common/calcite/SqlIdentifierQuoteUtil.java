@@ -2,6 +2,7 @@ package com.tencent.supersonic.common.calcite;
 
 import com.tencent.supersonic.common.pojo.enums.EngineType;
 import lombok.extern.slf4j.Slf4j;
+import net.sf.jsqlparser.JSQLParserException;
 import net.sf.jsqlparser.expression.Alias;
 import net.sf.jsqlparser.expression.CastExpression;
 import net.sf.jsqlparser.expression.Expression;
@@ -132,16 +133,5 @@ public class SqlIdentifierQuoteUtil {
      */
     private static void handleAlias(Alias alias, String quoteChar) {
         alias.setName(wrapIfKeyword(alias.getName(), quoteChar));
-    }
-
-    /**
-     * 向后兼容的方法
-     * 
-     * @deprecated 使用 {@link #addQuotesToSql(String, EngineType)} 替代
-     */
-    @Deprecated
-    public static String correctSQL(String sql) {
-        return addQuotesToSql(sql,
-                SqlDialectFactory.getSqlDialect(EngineType.POSTGRESQL).getIdentifierQuoteString());
     }
 }

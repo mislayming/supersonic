@@ -9,6 +9,7 @@ import com.tencent.supersonic.common.pojo.enums.AggOperatorEnum;
 import com.tencent.supersonic.common.pojo.enums.AggregateTypeEnum;
 import com.tencent.supersonic.common.pojo.enums.QueryType;
 import com.tencent.supersonic.headless.api.pojo.SchemaElement;
+import com.tencent.supersonic.headless.api.pojo.SchemaElementMatch;
 import com.tencent.supersonic.headless.api.pojo.SemanticParseInfo;
 import com.tencent.supersonic.headless.api.pojo.SqlInfo;
 import com.tencent.supersonic.headless.api.pojo.request.QueryFilter;
@@ -109,11 +110,13 @@ public class QueryReqBuilder {
         return querySQLReq;
     }
 
-    public static QuerySqlReq buildS2SQLReq(SqlInfo sqlInfo, Long dataSetId) {
+    public static QuerySqlReq buildS2SQLReq(SqlInfo sqlInfo, Long dataSetId, List<SchemaElementMatch> matchList) {
         QuerySqlReq querySQLReq = new QuerySqlReq();
         if (Objects.nonNull(sqlInfo.getCorrectedS2SQL())) {
             querySQLReq.setSql(sqlInfo.getCorrectedS2SQL());
         }
+
+        querySQLReq.setSchemaElements(matchList);
         querySQLReq.setSqlInfo(sqlInfo);
         querySQLReq.setDataSetId(dataSetId);
         return querySQLReq;
