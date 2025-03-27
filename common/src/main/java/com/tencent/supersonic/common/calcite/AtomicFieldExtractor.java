@@ -1,5 +1,6 @@
 package com.tencent.supersonic.common.calcite;
 
+import com.tencent.supersonic.common.pojo.enums.EngineType;
 import lombok.Getter;
 import org.apache.calcite.config.Lex;
 import org.apache.calcite.sql.*;
@@ -74,6 +75,7 @@ public class AtomicFieldExtractor {
      * @throws Exception 如果SQL解析失败
      */
     public static ExtractResult extractFromSql(String sql) throws Exception {
+        sql = SqlIdentifierQuoteUtil.addQuotesToSql(sql, EngineType.MYSQL);
         // 使用Calcite 1.37.0的配置，指定MySQL方言
         SqlParser.Config config = SqlParser.Config.DEFAULT
                 .withLex(Lex.MYSQL)
@@ -98,7 +100,7 @@ public class AtomicFieldExtractor {
     public static void main(String[] args) {
         // 测试SQL
         String sql = "WITH RECURSIVE 国家频道统计 AS (" +
-                "SELECT Country, COUNT(ChannelID) AS 频道数量 " +
+                "SELECT Language, Country, COUNT(ChannelID) AS 频道数量 " +
                 "FROM TVChannelDataset GROUP BY Country " +
                 "UNION ALL " +
                 "SELECT 'Global', COUNT(*) FROM TVChannelDataset" +
